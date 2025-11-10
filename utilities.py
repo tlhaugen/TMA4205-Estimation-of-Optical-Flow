@@ -1,11 +1,11 @@
 import numpy as np
+import matplotlib.image as mpimg
 from scipy.ndimage import gaussian_filter
 
-def interior_image(I):
-    return I[1:-1, 1:-1]
 
 def smooth(I, sigma):    
     return gaussian_filter(I, sigma)
+
 
 def forward_diff_boundary(I):
     n, m = I.shape
@@ -18,6 +18,7 @@ def forward_diff_boundary(I):
     dy[:n-1, :] = I[1:, :] - I[:-1, :]
     dy[n-1, :] = I[n-1, :] - I[n-2, :]
     return dx, dy
+
 
 def compute_derivatives(I0, I1):
     Ix0, Iy0 = forward_diff_boundary(I0)
@@ -34,6 +35,23 @@ def build_rhs(Ix, Iy, It):
     return -It * Ix, -It * Iy
 
 
+def image_preprocess(frame0_path, frame1_path, sigma=0.0):
+    I0 = mpimg.imread(frame0_path)
+    I1 = mpimg.imread(frame1_path)
+
+    if sigma > 0.0:
+        I0 = smooth(I0, sigma)
+        I1 = smooth(I1, sigma)
+
+    Ix, Iy, It = compute_derivatives(I0, I1)
+    rhsu, rhsv = build_rhs(Ix, Iy, It)
+
+    u0 = np.zeros_like(I0)
+    v0 = np.zeros_like(I0)
+
+    return u0, v0, Ix, Iy, rhsu, rhsv, I0, I1
+
+
 def laplacian5(u):
     n, m = u.shape
     L = np.zeros_like(u)
@@ -42,21 +60,26 @@ def laplacian5(u):
         u[1:n-1, 0:m-2] + u[1:n-1, 2:m] - 4.0 * u[1:n-1, 1:m-1])
     return L
 
+def zero_boundary(a):
+    a[0, :] = a[-1, :] = 0.0
+    a[:, 0] = a[:, -1] = 0.0
+    return a
+
 def apply_A(u, v, Ix, Iy, reg):
     Lu = laplacian5(u)
     Lv = laplacian5(v)
     Au = (Ix * Ix) * u + (Ix * Iy) * v - reg * Lu
     Av = (Ix * Iy) * u + (Iy * Iy) * v - reg * Lv
-    return Au, Av
+    return zero_boundary(Au), zero_boundary(Av) #Enforce zero BCs
 
 
 def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
-    u = u0.copy()
-    v = v0.copy()
-    Au, Av = apply_A(u, v, Ix, Iy, reg)
+    u = zero_boundary(u0.copy())
+    v = zero_boundary(v0.copy())
+    Au, Av = apply_A(u, v, Ix, Iy, reg) # Initial residual
 
-    ru = rhsu - Au
-    rv = rhsv - Av
+    ru = zero_boundary(rhsu.copy()) - Au
+    rv = zero_boundary(rhsv.copy()) - Av
     r2_0 = np.vdot(ru, ru) + np.vdot(rv, rv)
 
     pu = ru.copy()
