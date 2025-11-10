@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.image as mpimg
 from scipy.ndimage import gaussian_filter
 
 
@@ -35,10 +34,7 @@ def build_rhs(Ix, Iy, It):
     return -It * Ix, -It * Iy
 
 
-def image_preprocess(frame0_path, frame1_path, sigma=0.0):
-    I0 = mpimg.imread(frame0_path)
-    I1 = mpimg.imread(frame1_path)
-
+def image_preprocess(I0, I1, sigma=0.0):
     if sigma > 0.0:
         I0 = smooth(I0, sigma)
         I1 = smooth(I1, sigma)
