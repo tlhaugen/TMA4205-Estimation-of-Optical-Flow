@@ -89,7 +89,7 @@ def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
     for it in range(maxit):
         Ap_u, Ap_v = apply_A(pu, pv, Ix, Iy, reg)
 
-        alpha = r2_old / (np.vdot(pu, Ap_u) + np.vdot(pv, Ap_v))       # (r_k^T r_K) / (p_k^T A p_k)
+        alpha = r2_old / (np.vdot(pu, Ap_u) + np.vdot(pv, Ap_v)) # (r_k^T r_K) / (p_k^T A p_k)
 
         u += alpha * pu # update solution
         v += alpha * pv
@@ -98,7 +98,7 @@ def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
         rv -= alpha * Ap_v
 
         r2_new = np.vdot(ru, ru) + np.vdot(rv, rv)
-        rel = r2_new / r2_0
+        rel = np.sqrt(r2_new) / np.sqrt(r2_0)
 
         if rel < tol:
             return u, v, it, rel
