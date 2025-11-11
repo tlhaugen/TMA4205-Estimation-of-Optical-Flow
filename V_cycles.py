@@ -2,7 +2,7 @@
 from utilities import *
 from scipy.sparse import diags
 
-def smoothing(u0, v0, Ix, Iy, reg, rhsu, rhsv, level, s1):
+def smoothing(u0, v0, Ix, Iy, reg, rhsu, rhsv, level, s1, parity= 0):
     """
     Simple red-black Gauss-Seidel smoother (pointwise 2x2 solves).
     - u0, v0: full-grid arrays including Dirichlet border
@@ -10,7 +10,10 @@ def smoothing(u0, v0, Ix, Iy, reg, rhsu, rhsv, level, s1):
     - reg: regularisation parameter
     - rhsu, rhsv: right-hand sides (full-grid)
     - level: unused (kept for API compatibility)
-    - n_iters: number of RB-GS sweeps
+    - s1: number of RB-GS sweeps
+    -parity: choose red-black ordering starting with red(0) or black(1)
+    Returns the smoothed u, v fields.
+
     """
     u = u0.copy()
     v = v0.copy()
@@ -21,10 +24,10 @@ def smoothing(u0, v0, Ix, Iy, reg, rhsu, rhsv, level, s1):
     jr = range(1, m - 1)
     sweeps = max(1, s1 - int(level)) #calculate how many sweeps based on level
     for _ in range(sweeps):
-        for parity in (0, 1):  # red (0) then black (1)
+        for p in (parity, 1-parity): #update order
             for i in ir:
                 for j in jr:
-                    if ((i + j) & 1) != parity:
+                    if ((i + j) & 1) != p:
                         continue
                     Ixij = float(Ix[i, j])
                     Iyij = float(Iy[i, j])
@@ -54,8 +57,9 @@ def smoothing(u0, v0, Ix, Iy, reg, rhsu, rhsv, level, s1):
                     u[i, j] = u_new
                     v[i, j] = v_new
 
-    # enforce Dirichlet border exactly
-    u,v = enforce_bc(u, v)
+    # enforce Dirichlet border
+    u = zero_boundary(u)
+    v = zero_boundary(v)
     return u, v
 
 
@@ -113,7 +117,8 @@ def prolongation(rhu, rhv, Ix, Iy):
 
 def V_cycle(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1, s2, level, max_level):
     '''
-    V-cycle for the optical flow problem.
+    V-cycle for the optical flow problem. 
+    keeps the SPD structure of the problem.
     input:
     u0 - initial guess for u
     v0 - initial guess for v
@@ -131,20 +136,21 @@ def V_cycle(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1, s2, level, max_level):
     v - numerical solution for v
     '''
 
-    u,v = smoothing(u0, v0, Ix, Iy, reg, rhsu, rhsv, level,s1)
+    u,v = smoothing(u0, v0, Ix, Iy, reg, rhsu, rhsv, level,s1, parity=0)
 
     rhu,rhv = residual(u, v, Ix, Iy, reg, rhsu, rhsv)
     r2hu,r2hv,Ix2h,Iy2h = restriction(rhu, rhv, Ix, Iy)
     if level == max_level - 1:
-        e2hu,e2hv = of_cg(np.zeros_like(r2hu), np.zeros_like(r2hv),
-        Ix2h, Iy2h, reg, rhsu, rhsv, 1e-8, 1000, level+1)
+        e2hu, e2hv = of_cg(np.zeros_like(r2hu), np.zeros_like(r2hv),
+        Ix2h, Iy2h, reg, r2hu, r2hv, 1e-8, 1000, level+1)
+
     else:
         e2hu,e2hv = V_cycle(np.zeros_like(r2hu), np.zeros_like(r2hv),
         Ix2h, Iy2h, reg, r2hu, r2hv, s1, s2, level+1, max_level)
     ehu,ehv = prolongation(e2hu, e2hv)
     u = u + ehu
     v = v + ehv
-    u,v = smoothing(u, v, Ix, Iy, reg, rhsu, rhsv, level, s2)
+    u,v = smoothing(u, v, Ix, Iy, reg, rhsu, rhsv, level, s2,parity=1)
     return u, v
 
 
