@@ -6,7 +6,7 @@ from utilities_multigrid import prolongation, restriction, residual, smoothing
 def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000, level=0):
     u = zero_boundary(u0.copy())
     v = zero_boundary(v0.copy())
-    Au, Av = apply_A(u, v, Ix, Iy, reg) # Initial residual
+    Au, Av = apply_A(u, v, Ix, Iy, reg, level=level) # Initial residual
     it = 0
 
     ru = zero_boundary(rhsu.copy()) - Au
@@ -16,7 +16,7 @@ def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000, level=0):
     pu = ru.copy()
     pv = rv.copy()
     r2_old = r2_0.copy()
-    res_hist = []
+    res_hist = [1.0]
     rel = 1.0
 
     while it < maxit and rel > tol:
@@ -65,41 +65,53 @@ def V_cycle(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1, s2, level, max_level):
     v - numerical solution for v
     '''
 
-    u,v = smoothing(u0, v0, Ix, Iy, reg, rhsu, rhsv, level,s1, parity=0)
+    u,v = smoothing(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1, level=level, parity=0)
 
-    rhu,rhv = residual(u, v, Ix, Iy, reg, rhsu, rhsv)
-    r2hu,r2hv,Ix2h,Iy2h = restriction(rhu, rhv, Ix, Iy)
-    if level == max_level - 1:
-        e2hu, e2hv = of_cg(np.zeros_like(r2hu), np.zeros_like(r2hv),
-        Ix2h, Iy2h, reg, r2hu, r2hv, 1e-8, 1000, level+1)
+    rhu,rhv = residual(u, v, Ix, Iy, reg, rhsu, rhsv, level=level)
+    n,m = rhu.shape
+    n2, m2 = n // 2, m // 2
+    too_small_next = (n2 < 3) or (m2 < 3)   # stop coarsening if next level would have no interior
+
+    if (level == max_level - 1) or too_small_next: 
+        ehu, ehv, *_ = of_cg(np.zeros_like(rhu), np.zeros_like(rhv), Ix, Iy, reg, rhu, rhv, level=level)
+
+        u += ehu
+        v += ehv
 
     else:
-        e2hu,e2hv = V_cycle(np.zeros_like(r2hu), np.zeros_like(r2hv),
-        Ix2h, Iy2h, reg, r2hu, r2hv, s1, s2, level+1, max_level)
-    ehu,ehv = prolongation(e2hu, e2hv)
-    u = u + ehu
-    v = v + ehv
-    u,v = smoothing(u, v, Ix, Iy, reg, rhsu, rhsv, level, s2,parity=1)
+        r2hu,r2hv,Ix2h,Iy2h = restriction(rhu, rhv, Ix, Iy)
+        e2hu,e2hv = V_cycle(np.zeros_like(r2hu), np.zeros_like(r2hv), Ix2h, Iy2h, reg, r2hu, r2hv, s1, s2, level+1, max_level)
+
+        ehu, ehv = prolongation(e2hu, e2hv)
+        u += ehu
+        v += ehv
+
+    u,v = smoothing(u, v, Ix, Iy, reg, rhsu, rhsv, s2, level=level, parity=1)
     return u, v
 
 def of_vc(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1=2, s2=2, max_level=4, tol=1e-8, maxit=2000):
     u, v = u0.copy(), v0.copy()
-    rhu, rhv = residual(u, v, Ix, Iy, reg, rhsu, rhsv)
+    rhu, rhv = residual(u, v, Ix, Iy, reg, rhsu, rhsv, level=0)
     r2_0 = np.vdot(rhu, rhu) + np.vdot(rhv, rhv)
+    if r2_0 == 0.0:
+        return u, v, 0, 0.0, [0.0]
 
     it = 0
     rel = 1
-    res_hist = []
+    res_hist = [1.0]
 
     while it < maxit and rel > tol:
         u, v = V_cycle(u, v, Ix, Iy, reg, rhsu, rhsv, s1, s2, level=0, max_level=max_level)
-        rhu, rhv = residual(u, v, Ix, Iy, reg, rhsu, rhsv)
+        rhu, rhv = residual(u, v, Ix, Iy, reg, rhsu, rhsv, level=0)
         r2_new = np.vdot(rhu, rhu) + np.vdot(rhv, rhv)
+        print(f"r2_new: {r2_new}, r2_0: {r2_0}")
         rel = np.sqrt(r2_new) / np.sqrt(r2_0)
+        print(f"V-cycle iteration {it+1}, relative residual: {rel:.2e}")
         res_hist.append(rel)
         it += 1
 
     return u, v, it, rel, res_hist
+
 
 
 def run_pcg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
