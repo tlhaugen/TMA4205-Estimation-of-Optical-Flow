@@ -93,7 +93,7 @@ def restriction(rhu, rhv, Ix, Iy):
     return r2hu, r2hv, Ix2h, Iy2h
 
 
-def prolongation_sparse(e2hu, e2hv):
+def prolongation(e2hu, e2hv):
     ''' implement prolongation by linear interpolation'''
     n_coarse, m_coarse = e2hu.shape
     n_fine = 2*(n_coarse-1) + 1 # fine rows (y-direction)
