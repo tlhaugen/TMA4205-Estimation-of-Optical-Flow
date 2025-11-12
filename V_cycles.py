@@ -1,5 +1,5 @@
-
-from utilities import *
+import numpy as np
+from utilities import zero_boundary, apply_A
 from scipy.sparse import diags
 
 def smoothing(u0, v0, Ix, Iy, reg, rhsu, rhsv, level, s1, parity= 0):
@@ -113,44 +113,5 @@ def prolongation(rhu, rhv, Ix, Iy):
     ehv = P1dy @ rhv @ P1dx.T
 
     return ehu, ehv
-
-
-def V_cycle(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1, s2, level, max_level):
-    '''
-    V-cycle for the optical flow problem. 
-    keeps the SPD structure of the problem.
-    input:
-    u0 - initial guess for u
-    v0 - initial guess for v
-    Ix - x-derivative of the first frame
-    Iy - y-derivative of the first frame
-    reg - regularisation parameter (lambda)
-    rhsu - right-hand side in the equation for u
-    rhsv - right-hand side in the equation for v
-    s1 - number of pre-smoothings
-    s2 - number of post-smoothings
-    level - current level
-    max_level - total number of levels
-    output:
-    u - numerical solution for u
-    v - numerical solution for v
-    '''
-
-    u,v = smoothing(u0, v0, Ix, Iy, reg, rhsu, rhsv, level,s1, parity=0)
-
-    rhu,rhv = residual(u, v, Ix, Iy, reg, rhsu, rhsv)
-    r2hu,r2hv,Ix2h,Iy2h = restriction(rhu, rhv, Ix, Iy)
-    if level == max_level - 1:
-        e2hu, e2hv = of_cg(np.zeros_like(r2hu), np.zeros_like(r2hv),
-        Ix2h, Iy2h, reg, r2hu, r2hv, 1e-8, 1000, level+1)
-
-    else:
-        e2hu,e2hv = V_cycle(np.zeros_like(r2hu), np.zeros_like(r2hv),
-        Ix2h, Iy2h, reg, r2hu, r2hv, s1, s2, level+1, max_level)
-    ehu,ehv = prolongation(e2hu, e2hv)
-    u = u + ehu
-    v = v + ehv
-    u,v = smoothing(u, v, Ix, Iy, reg, rhsu, rhsv, level, s2,parity=1)
-    return u, v
 
 
