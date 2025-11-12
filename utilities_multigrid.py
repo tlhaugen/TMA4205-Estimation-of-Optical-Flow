@@ -71,6 +71,75 @@ def  residual(u, v, Ix, Iy, reg, rhsu, rhsv, level=0):
     rhv = zero_boundary(rhsv.copy()) - Av
     return rhu, rhv
 
+# def restriction(rhu, rhv, Ix, Iy):
+#     """Restrict residuals and image derivatives from fine grid to coarse grid."""
+#     n, m = rhu.shape
+#     # Calculate number of interior points on fine grid
+#     interior_n = n - 2  # exclude boundary rows
+#     interior_m = m - 2  # exclude boundary cols
+#     # Compute coarse grid interior points (rounding up for half if needed)
+#     interior_coarse_n = (interior_n + 1) // 2
+#     interior_coarse_m = (interior_m + 1) // 2
+#     # Total coarse grid size includes two boundary layers
+#     n_coarse = interior_coarse_n + 2
+#     m_coarse = interior_coarse_m + 2
+
+#     # 1D restriction operators in y and x (full-weighting: [1/4, 1/2, 1/4] stencil)
+#     R1dy = diags(
+#         [0.25 * np.ones(n_coarse - 1), 0.5 * np.ones(n_coarse), 0.25 * np.ones(n_coarse - 1)],
+#         offsets=[-1, 0, 1], shape=(n_coarse, n)
+#     ).tocsr()
+#     R1dx = diags(
+#         [0.25 * np.ones(m_coarse - 1), 0.5 * np.ones(m_coarse), 0.25 * np.ones(m_coarse - 1)],
+#         offsets=[-1, 0, 1], shape=(m_coarse, m)
+#     ).tocsr()
+
+#     # Apply restriction to residuals and derivatives
+#     r2hu = R1dy @ rhu @ R1dx.T
+#     r2hv = R1dy @ rhv @ R1dx.T
+#     Ix2h = R1dy @ Ix  @ R1dx.T
+#     Iy2h = R1dy @ Iy  @ R1dx.T
+
+#     return r2hu, r2hv, Ix2h, Iy2h
+
+# def prolongation(e2hu, e2hv):
+#     """Prolongate coarse-grid corrections to the fine grid by bilinear interpolation."""
+#     n_coarse, m_coarse = e2hu.shape  # coarse grid size (including boundaries)
+#     interior_coarse_n = n_coarse - 2  # coarse interior points (rows)
+#     interior_coarse_m = m_coarse - 2  # coarse interior points (cols)
+#     # Initial assumption: fine interior is exactly double the coarse interior
+#     interior_fine_n = 2 * interior_coarse_n
+#     interior_fine_m = 2 * interior_coarse_m
+#     n_fine = interior_fine_n + 2  # fine grid size (rows) including boundaries
+#     m_fine = interior_fine_m + 2  # fine grid size (cols) including boundaries
+
+#     # Construct 1D prolongation operators (linear interpolation in each dimension)
+#     P1dy = 2 * diags(
+#         [0.5 * np.ones(n_coarse), 1.0 * np.ones(n_coarse), 0.5 * np.ones(n_coarse - 1)],
+#         offsets=[-1, 0, 1], shape=(n_fine, n_coarse)
+#     ).tocsr()
+#     P1dx = 2 * diags(
+#         [0.5 * np.ones(m_coarse), 1.0 * np.ones(m_coarse), 0.5 * np.ones(m_coarse - 1)],
+#         offsets=[-1, 0, 1], shape=(m_fine, m_coarse)
+#     ).tocsr()
+
+#     # Perform prolongation (first in y-direction, then in x-direction)
+#     ehu_full = P1dy @ e2hu @ P1dx.T
+#     ehv_full = P1dy @ e2hv @ P1dx.T
+
+#     # If an extra ghost row/col was created (fine interior was odd), trim it off
+#     # We detect this by checking the second-to-last row/column in the full arrays.
+#     if ehu_full.shape[0] > 2 and ehu_full.shape[1] > 2:
+#         # If the second-to-last row and column (interior of fine grid) are entirely zero,
+#         # it indicates that the last row/col is a ghost boundary with no corresponding fine interior.
+#         interior_second_last_row = ehu_full[-2, 1:-1]
+#         interior_second_last_col = ehu_full[1:-1, -2]
+#         if np.all(interior_second_last_row == 0) and np.all(interior_second_last_col == 0):
+#             ehu_full = ehu_full[:-1, :-1]
+#             ehv_full = ehv_full[:-1, :-1]
+
+#     return ehu_full, ehv_full
+
 
 def restriction(rhu, rhv, Ix, Iy):
     '''Create 1D restriction operators with stencil [1/4, 1/2, 1/4] 
