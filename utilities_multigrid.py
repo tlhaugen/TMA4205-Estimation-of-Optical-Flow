@@ -80,14 +80,9 @@ def restriction(rhu, rhv, Ix, Iy):
     n_coarse = (n + 1) // 2  # coarse rows (y-direction)
     m_coarse = (m + 1) // 2  # coarse columns (x-direction)
     #create 1D restriction operators in x and y direction
-    main_diag = np.ones(n_coarse) * 0.5
-    off_diag = np.ones(n_coarse - 1) * 0.25
-    R1dy = diags([off_diag, main_diag, off_diag], [-1, 0, 1], shape=(n_coarse, n))
-    R1dy = R1dy.tocsr()
-    main_diag = np.ones(m_coarse) * 0.5
-    off_diag = np.ones(m_coarse - 1) * 0.25
-    R1dx = diags([off_diag, main_diag, off_diag], [-1, 0, 1], shape=(m_coarse, m))
-    R1dx = R1dx.tocsr()
+    R1dy = diags([0.25*np.ones(n_coarse-1), 0.5*np.ones(n_coarse), 0.25*np.ones(n_coarse)], offsets=[-1, 0, +1], shape=(n_coarse, n)).tocsr()
+
+    R1dx = diags([0.25*np.ones(m_coarse-1), 0.5*np.ones(m_coarse), 0.25*np.ones(m_coarse)], offsets=[-1, 0, +1], shape=(m_coarse, m)).tocsr()
     
     #apply restriction
     r2hu = R1dy @ rhu @ R1dx.T
@@ -98,20 +93,17 @@ def restriction(rhu, rhv, Ix, Iy):
     return r2hu, r2hv, Ix2h, Iy2h
 
 
-def prolongation(rhu, rhv, Ix, Iy):
+def prolongation_sparse(e2hu, e2hv):
     ''' implement prolongation by linear interpolation'''
-    n,m = rhu.shape
-    n_fine = 2 * (n - 1) + 1  # fine rows (y-direction)
-    m_fine = 2 * (m - 1) + 1  # fine columns (x-direction)
+    n_coarse, m_coarse = e2hu.shape
+    n_fine = 2*(n_coarse-1) + 1 # fine rows (y-direction)
+    m_fine = 2*(m_coarse-1) + 1 # fine columns (x-direction)
+
     #create 1D prolongation operators in x and y direction
-    P1dy = diags([0.5 * np.ones(n - 1), np.ones(n), 0.5 * np.ones(n - 1)], [-1, 0, 1], shape=(n_fine, n))
-    P1dy = P1dy.tocsr()
-    P1dx = diags([0.5 * np.ones(m - 1), np.ones(m), 0.5 * np.ones(m - 1)], [-1, 0, 1], shape=(m_fine, m))
-    P1dx = P1dx.tocsr()
-    #apply prolongation
-    ehu = P1dy @ rhu @ P1dx.T
-    ehv = P1dy @ rhv @ P1dx.T
+    P1dy = diags([0.5*np.ones(n_coarse), 1.0*np.ones(n_coarse), 0.5*np.ones(n_coarse-1)], offsets=[-1, 0, +1], shape=(n_fine, n_coarse)).tocsr()
+    P1dx = diags([0.5*np.ones(m_coarse), 1.0*np.ones(m_coarse), 0.5*np.ones(m_coarse-1)], offsets=[-1, 0, +1], shape=(m_fine, m_coarse)).tocsr()
 
+    ehu = P1dy @ e2hu @ P1dx.T
+    ehv = P1dy @ e2hv @ P1dx.T
     return ehu, ehv
-
 
