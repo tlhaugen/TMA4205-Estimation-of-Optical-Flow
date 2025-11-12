@@ -1,47 +1,7 @@
 import numpy as np
 
 from utilities import zero_boundary, apply_A
-from V_cycles import V_cycle, prolongation, restriction, residual, smoothing
-
-def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
-    u = zero_boundary(u0.copy())
-    v = zero_boundary(v0.copy())
-    Au, Av = apply_A(u, v, Ix, Iy, reg) # Initial residual
-
-    ru = zero_boundary(rhsu.copy()) - Au
-    rv = zero_boundary(rhsv.copy()) - Av
-    r2_0 = np.vdot(ru, ru) + np.vdot(rv, rv)
-
-    pu = ru.copy()
-    pv = rv.copy()
-    r2_old = r2_0.copy()
-    res_hist = []
-
-    for it in range(maxit):
-        Ap_u, Ap_v = apply_A(pu, pv, Ix, Iy, reg)
-
-        alpha = r2_old / (np.vdot(pu, Ap_u) + np.vdot(pv, Ap_v)) # (r_k^T r_K) / (p_k^T A p_k)
-
-        u += alpha * pu # update solution
-        v += alpha * pv
-
-        ru -= alpha * Ap_u  # residual
-        rv -= alpha * Ap_v
-
-        r2_new = np.vdot(ru, ru) + np.vdot(rv, rv)
-        rel = np.sqrt(r2_new) / np.sqrt(r2_0)
-
-        if rel < tol:
-            return u, v, it, rel, res_hist
-
-        beta = r2_new / r2_old
-        pu = ru + beta * pu
-        pv = rv + beta * pv
-
-        r2_old = r2_new
-        res_hist.append(rel)
-
-    return u, v, it, rel, res_hist
+from utilities_multigrid import prolongation, restriction, residual, smoothing
 
 def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
     u = zero_boundary(u0.copy())
@@ -121,7 +81,6 @@ def V_cycle(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1, s2, level, max_level):
     v = v + ehv
     u,v = smoothing(u, v, Ix, Iy, reg, rhsu, rhsv, level, s2,parity=1)
     return u, v
-
 
 
 def run_pcg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
