@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.ndimage import gaussian_filter
-from V_cycles import V_cycle
+#from V_cycles import V_cycle
 
 
 def smooth(I, sigma):    
@@ -99,7 +99,7 @@ def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
         rel = np.sqrt(r2_new) / np.sqrt(r2_0)
 
         if rel < tol:
-            return u, v, it, rel
+            return u, v, it, rel, res_hist
 
         beta = r2_new / r2_old
         pu = ru + beta * pu
@@ -108,14 +108,14 @@ def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
         r2_old = r2_new
         res_hist[it] = rel
 
-    return u, v, it, r2_old / r2_0, res_hist
+    return u, v, it, rel, res_hist
 
 
-def run_pcg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
-    '''
-    Solve the optical flow problem using Preconditioned Conjugate Gradient (PCG).
-    '''
-    pu,pv = V_cycle(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1=2, s2=2, level=0, max_level=3)
-    u, v, it, relres, _ = of_cg(pu, pv, Ix, Iy, reg, rhsu, rhsv, tol, maxit)
-    return u, v, it, relres
+# def run_pcg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
+#     '''
+#     Solve the optical flow problem using Preconditioned Conjugate Gradient (PCG).
+#     '''
+#     pu,pv = V_cycle(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1=2, s2=2, level=0, max_level=3)
+#     u, v, it, relres, _ = of_cg(pu, pv, Ix, Iy, reg, rhsu, rhsv, tol, maxit)
+#     return u, v, it, relres
 
