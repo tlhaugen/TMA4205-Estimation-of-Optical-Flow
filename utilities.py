@@ -82,6 +82,7 @@ def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
     pu = ru.copy()
     pv = rv.copy()
     r2_old = r2_0.copy()
+    res_hist = np.zeros(maxit)
 
     for it in range(maxit):
         Ap_u, Ap_v = apply_A(pu, pv, Ix, Iy, reg)
@@ -105,8 +106,9 @@ def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
         pv = rv + beta * pv
 
         r2_old = r2_new
+        res_hist[it] = rel
 
-    return u, v, it, r2_old / r2_0
+    return u, v, it, res_hist
 
 
 def run_pcg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
