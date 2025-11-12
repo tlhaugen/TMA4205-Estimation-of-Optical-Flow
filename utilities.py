@@ -108,7 +108,7 @@ def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
         r2_old = r2_new
         res_hist[it] = rel
 
-    return u, v, it, res_hist
+    return u, v, it, r2_old / r2_0, res_hist
 
 
 def run_pcg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
@@ -116,6 +116,6 @@ def run_pcg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
     Solve the optical flow problem using Preconditioned Conjugate Gradient (PCG).
     '''
     pu,pv = V_cycle(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1=2, s2=2, level=0, max_level=3)
-    u, v, it, relres = of_cg(pu, pv, Ix, Iy, reg, rhsu, rhsv, tol, maxit)
+    u, v, it, relres, _ = of_cg(pu, pv, Ix, Iy, reg, rhsu, rhsv, tol, maxit)
     return u, v, it, relres
 
