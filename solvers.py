@@ -3,7 +3,7 @@ import numpy as np
 from utilities import zero_boundary, apply_A
 from utilities_multigrid import prolongation, restriction, residual, smoothing
 
-def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
+def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000, level=0):
     u = zero_boundary(u0.copy())
     v = zero_boundary(v0.copy())
     Au, Av = apply_A(u, v, Ix, Iy, reg) # Initial residual
@@ -20,7 +20,7 @@ def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
     rel = 1.0
 
     while it < maxit and rel > tol:
-        Ap_u, Ap_v = apply_A(pu, pv, Ix, Iy, reg)
+        Ap_u, Ap_v = apply_A(pu, pv, Ix, Iy, reg, level)
 
         alpha = r2_old / (np.vdot(pu, Ap_u) + np.vdot(pv, Ap_v)) # (r_k^T r_K) / (p_k^T A p_k)
 
