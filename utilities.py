@@ -56,11 +56,12 @@ def zero_boundary(a):
     a[:, 0] = a[:, -1] = 0.0
     return a
 
-def apply_A(u, v, Ix, Iy, reg):
+def apply_A(u, v, Ix, Iy, reg, level=0):
+    h2inv = 4.0 ** (-level)
     Lu = laplacian5(u)
     Lv = laplacian5(v)
-    Au = (Ix * Ix) * u + (Ix * Iy) * v - reg * Lu
-    Av = (Ix * Iy) * u + (Iy * Iy) * v - reg * Lv
+    Au = (Ix * Ix) * u + (Ix * Iy) * v - reg * (h2inv * Lu)
+    Av = (Ix * Iy) * u + (Iy * Iy) * v - reg * (h2inv * Lv)
     return zero_boundary(Au), zero_boundary(Av) #Enforce zero BCs
 
 
