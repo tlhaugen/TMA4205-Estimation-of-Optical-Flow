@@ -17,6 +17,7 @@ def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
     pv = rv.copy()
     r2_old = r2_0.copy()
     res_hist = []
+    rel = 1.0
 
     while it < maxit and rel > tol:
         Ap_u, Ap_v = apply_A(pu, pv, Ix, Iy, reg)
@@ -81,12 +82,13 @@ def V_cycle(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1, s2, level, max_level):
     u,v = smoothing(u, v, Ix, Iy, reg, rhsu, rhsv, level, s2,parity=1)
     return u, v
 
-def V_cycle_solve(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1=2, s2=2, max_level=4, tol=1e-8, maxit=2000):
+def of_vc(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1=2, s2=2, max_level=4, tol=1e-8, maxit=2000):
     u, v = u0.copy(), v0.copy()
     rhu, rhv = residual(u, v, Ix, Iy, reg, rhsu, rhsv)
     r2_0 = np.vdot(rhu, rhu) + np.vdot(rhv, rhv)
 
     it = 0
+    rel = 1
     res_hist = []
 
     while it < maxit and rel > tol:
