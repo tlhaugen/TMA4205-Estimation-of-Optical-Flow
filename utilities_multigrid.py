@@ -1,6 +1,6 @@
 import numpy as np
 from utilities import zero_boundary, apply_A
-from scipy.sparse import diags
+
 
 def smoothing(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1, level, parity=0):
     """
@@ -72,9 +72,7 @@ def  residual(u, v, Ix, Iy, reg, rhsu, rhsv, level=0):
     return rhu, rhv
 
 def restriction(rhu, rhv, Ix, Iy):
-    print(f'rhu sise before restriction{rhu.shape}')
-    print(f'rhu before restriction, {rhu}')
-    
+
     n_f, m_f = rhu.shape
     n_c = n_f // 2 + 1
     m_c = m_f // 2 + 1
@@ -111,15 +109,13 @@ def restriction(rhu, rhv, Ix, Iy):
     r2hv = restrict_one(rhv)
     Ix2h = restrict_one(Ix)
     Iy2h = restrict_one(Iy)
-    print(f'rhu after restriction, {r2hu}')
-    print(f'rhu size after restriction{r2hu.shape}')
+
     return r2hu, r2hv, Ix2h, Iy2h
 
 
 
 def prolongation(e2hu, e2hv):
-    print(f'e2hu before restriction{e2hu}')
-    print(f'e2hu before restriction{e2hu.shape}')
+
     n_c, m_c = e2hu.shape
 
     n_f = 2*(n_c - 1) + 1
@@ -146,75 +142,5 @@ def prolongation(e2hu, e2hv):
         ehv[:-2:2, :-2:2] + ehv[:-2:2, 2::2] +
         ehv[2::2,  :-2:2] + ehv[2::2,  2::2]
     )    
-    print(f'ehu after restriction{ehu}')
-    print(f'e2hu shape after restriction{e2hu.shape}')
+
     return ehu,ehv
-
-    '''Implement prolongation by linear interpolation (bilinear for 2D).'''
-    print(f'e2hu before prolongation:{e2hu}')
-    n_coarse, m_coarse = e2hu.shape  # coarse grid shape (including boundaries)
-    # Compute fine grid dimensions from coarse (include boundary points)
-    n_fine = 2 * (n_coarse - 1) + 1
-    m_fine = 2 * (m_coarse - 1) + 1
-    print(f"{e2hu.shape} -> ({n_fine},{m_fine})")  # print dimensions even if we abort
-    # Create 1D prolongation operators in y and x directions
-    P1dy = 2 * diags(
-        [0.5 * np.ones(n_coarse), 1.0 * np.ones(n_coarse), 0.5 * np.ones(n_coarse - 1)],
-        offsets=[-1, 0, 1], shape=(n_fine, n_coarse)
-    ).tocsr()
-    P1dx = 2 * diags(
-        [0.5 * np.ones(m_coarse), 1.0 * np.ones(m_coarse), 0.5 * np.ones(m_coarse - 1)],
-        offsets=[-1, 0, 1], shape=(m_fine, m_coarse)
-    ).tocsr()
-
-    # Apply prolongation (first in y, then in x)
-    ehu = P1dy @ e2hu @ P1dx.T
-    ehv = P1dy @ e2hv @ P1dx.T
-
-    ehu = zero_boundary(ehu)
-    ehv = zero_boundary(ehv)    
-    print (f'ehu after prolongation:{ehu}')
-    return ehu, ehv
-
-
-# def restriction(rhu, rhv, Ix, Iy):
-#     ''' cread 1d restriction matrix with stencil [1/4,1/2,1/4] 
-#     and apply it to the residuals and the image derivatives
-#     '''
-#     n,m = rhu.shape
-#     n_coarse = (n + 1) // 2  # coarse rows (y-direction)
-#     m_coarse = (m + 1) // 2  # coarse columns (x-direction)
-#     #create 1D restriction operators in x and y direction
-#     main_diag = np.ones(n_coarse) * 0.5
-#     off_diag = np.ones(n_coarse - 1) * 0.25
-#     R1dy = diags([off_diag, main_diag, off_diag], [-1, 0, 1], shape=(n_coarse, n))
-#     R1dy = R1dy.tocsr()
-#     main_diag = np.ones(m_coarse) * 0.5
-#     off_diag = np.ones(m_coarse - 1) * 0.25
-#     R1dx = diags([off_diag, main_diag, off_diag], [-1, 0, 1], shape=(m_coarse, m))
-#     R1dx = R1dx.tocsr()
-    
-#     #apply restriction
-#     r2hu = R1dy @ rhu @ R1dx.T
-#     r2hv = R1dy @ rhv @ R1dx.T
-#     Ix2h = R1dy @ Ix @ R1dx.T
-#     Iy2h = R1dy @ Iy @ R1dx.T
-
-#     return r2hu, r2hv, Ix2h, Iy2h
-
-
-# def prolongation(rhu, rhv, Ix, Iy):
-    ''' implement prolongation by linear interpolation'''
-    n,m = rhu.shape
-    n_fine = 2 * (n - 1) + 1  # fine rows (y-direction)
-    m_fine = 2 * (m - 1) + 1  # fine columns (x-direction)
-    #create 1D prolongation operators in x and y direction
-    P1dy = diags([0.5 * np.ones(n - 1), np.ones(n), 0.5 * np.ones(n - 1)], [-1, 0, 1], shape=(n_fine, n))
-    P1dy = P1dy.tocsr()
-    P1dx = diags([0.5 * np.ones(m - 1), np.ones(m), 0.5 * np.ones(m - 1)], [-1, 0, 1], shape=(m_fine, m))
-    P1dx = P1dx.tocsr()
-    #apply prolongation
-    ehu = P1dy @ rhu @ P1dx.T
-    ehv = P1dy @ rhv @ P1dx.T
-
-    return ehu, ehv
