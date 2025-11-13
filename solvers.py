@@ -96,6 +96,7 @@ def of_vc(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1=2, s2=2, max_level=4, tol=1e-8, ma
     if r2_0 == 0.0:
         return u, v, 0, 0.0, [0.0]
 
+
     it = 0
     rel = 1
     res_hist = [1.0]

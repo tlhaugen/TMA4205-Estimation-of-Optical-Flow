@@ -28,8 +28,17 @@ def compute_derivatives(I0, I1):
 def build_rhs(Ix, Iy, It):
     return -It * Ix, -It * Iy
 
+def pad_to_odd(im):
+    n, m = im.shape
+    pad_n = 1 if n % 2 == 0 else 0
+    pad_m = 1 if m % 2 == 0 else 0
+    return np.pad(im, ((0,pad_n),(0,pad_m)), mode='constant')
 
 def image_preprocess(I0, I1, sigma=0.0):
+    # pad first to odd dimensions
+    I0 = pad_to_odd(I0)
+    I1 = pad_to_odd(I1)
+
     if sigma > 0.0:
         I0 = gaussian_filter(I0, sigma)
         I1 = gaussian_filter(I1, sigma)
