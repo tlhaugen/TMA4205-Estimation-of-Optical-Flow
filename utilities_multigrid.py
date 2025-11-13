@@ -147,12 +147,12 @@ def restriction(rhu, rhv, Ix, Iy):
     n, m = rhu.shape
     print(f"{rhu.shape}")  # print dimensions even if we abort
     # Compute coarse grid dimensions (include boundary points)
-    interior_n = n - 2  # fine interior points (exclude boundaries)
-    interior_m = m - 2
-    interior_coarse_n = (interior_n + 1) // 2  # half of interior (rounding up)
-    interior_coarse_m = (interior_m + 1) // 2
-    n_coarse = interior_coarse_n + 2  # add boundary points
-    m_coarse = interior_coarse_m + 2
+    interior_n = n # fine interior points (exclude boundaries)
+    interior_m = m
+    interior_coarse_n = (interior_n) // 2  # half of interior (rounding up)
+    interior_coarse_m = (interior_m) // 2
+    n_coarse = interior_coarse_n  # add boundary points
+    m_coarse = interior_coarse_m
 
     # Create 1D restriction operators in y and x directions
     R1dy = diags(
@@ -177,12 +177,8 @@ def prolongation(e2hu, e2hv):
     '''Implement prolongation by linear interpolation (bilinear for 2D).'''
     n_coarse, m_coarse = e2hu.shape  # coarse grid shape (including boundaries)
     # Compute fine grid dimensions from coarse (include boundary points)
-    n_fine = 2 * (n_coarse - 2) +1
-    if n_fine // 2 != 0:
-        n_fine += 1      # because fine interior ≈ 2 * coarse interior
-    m_fine = 2 * (m_coarse - 2) +1
-    if m_fine // 2 != 0:
-        m_fine += 1 
+    n_fine = 2 * (n_coarse)
+    m_fine = 2 * (m_coarse)
     print(f"{e2hu.shape} -> ({n_fine},{m_fine})")  # print dimensions even if we abort
     # Create 1D prolongation operators in y and x directions
     P1dy = 2 * diags(
