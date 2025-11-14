@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import time
 
@@ -199,67 +200,47 @@ def plot_performance(results, method="cg"):
 
 
 
+def summarize_results(results):
+    """
+    Build a table from the 'results' dict with:
+      N, method, iterations, time [s], iterations/time, mean conv. factor, final rel. residual.
+    """
+    rows = []
 
-# def plot_flow_field(I0, u, v, method = 'cg'):
+    for method, data in results.items():
+        Ns = data["N"]
+        its = data["iterations"]
+        times = data["time"]
+        res_hists = data["residual_history"]
 
-#     fig, axes = plt.subplots(1, 3, figsize=(15, 15))
+        for N, it, t, hist in zip(Ns, its, times, res_hists):
+            it = int(it)
+            hist = np.asarray(hist, dtype=float)
 
-#     flow_mag = np.sqrt(u**2 + v**2)
-#     step = 40  # spacing for quiver arrows
-#     Y, X = np.mgrid[0:u.shape[0], 0:u.shape[1]]
-#     mask = (X % step == 0) & (Y % step == 0)
+            if hist.size > 0:
+                final_rel = float(hist[-1])  # last entry in residual history
+            else:
+                final_rel = np.nan
 
-#     # Original grayscale image
-#     axes[0].imshow(I0, cmap="gray")
-#     axes[0].set_title(f"Input image ({u.shape[0]}x{u.shape[1]})")
-#     axes[0].axis("off")
+            #mean convergence factor: rho ≈ (||r_k||/||r_0||)^(1/k)
+            if it > 0 and final_rel > 0:
+                rho = final_rel ** (1.0 / it)
+            else:
+                rho = np.nan
 
-#     #  Quiver overlay
-#     axes[0].imshow(I0, cmap="gray")
-#     axes[0].quiver(X[mask], Y[mask], u[mask], v[mask], color="red", angles="xy", scale_units="xy", scale=1.0, width=0.004)
-#     axes[0].set_title("Sparse flow vectors")
-#     axes[0].axis("off")
+            rows.append(
+                {
+                    "N": int(N),
+                    "method": method,
+                    "iterations": it,
+                    "time_s": t,
+                    "it_per_s": it / t if t > 0 else np.nan,
+                    "mean_conv_factor": rho,
+                    "final_rel_res": final_rel,
+                }
+            )
 
-#     # Flow magnitude
-#     im = axes[0].imshow(flow_mag, cmap="inferno")
-#     axes[0].set_title("Flow magnitude")
-#     axes[0].axis("off")
-#     fig.colorbar(im, ax=axes[0,2], fraction=0.046, pad=0.04, label="|u,v|")
-#     plt.suptitle(f"Optical Flow Field using {method} method")
+    df = pd.DataFrame(rows).sort_values(["N", "method"])
 
-# # def plot_performance(results, method="cg"):
-#     data = results[method]
-#     N = data["N"]
-#     iters = data["iterations"]
-#     times = data["time"]
-#     histories = data["residual_history"]
-
-#     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
-
-#     # Convergence histories
-#     for Ni, res in zip(N, histories):
-#         if len(res) == 0:
-#             continue
-#         axes[0].semilogy(res, label=f"N={int(Ni)}")
-
-#     axes[0].set_title(f"Convergence history ({method})")
-#     axes[0].set_xlabel("Iteration")
-#     axes[0].set_ylabel("Relative residual")
-#     axes[0].legend()
-#     axes[0].grid(True, which="both", ls="--", lw=0.5)
-
-#     # Iterations vs image size
-#     axes[1].plot(N, iters, "o-", lw=2)
-#     axes[1].set_title(f"Iterations vs image size ({method})")
-#     axes[1].set_xlabel("Image size N")
-#     axes[1].set_ylabel("Number of iterations")
-#     axes[1].grid(True)
-
-#     # Computation time vs image size
-#     axes[2].plot(N, times, "o-", lw=2)
-#     axes[2].set_title(f"Computation time vs image size ({method})")
-#     axes[2].set_xlabel("Image size N")
-#     axes[2].set_ylabel("Time [s]")
-#     axes[2].grid(True)
-#     plt.suptitle(f"Performance metrics for {method} method")
-#     plt.show()
+    #print(df.to_markdown(index=False, floatfmt=".3g"))
+    return df
