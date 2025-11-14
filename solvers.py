@@ -12,17 +12,19 @@ def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000, level=0):
     ru = zero_boundary(rhsu.copy()) - Au
     rv = zero_boundary(rhsv.copy()) - Av
     r2_0 = np.vdot(ru, ru) + np.vdot(rv, rv)
+    r_0 = np.sqrt(r2_0)
 
     pu = ru.copy()
     pv = rv.copy()
-    r2_old = r2_0.copy()
+    r2_old = r2_0
     res_hist = [1.0]
     rel = 1.0
+    dot = np.vdot
 
     while it < maxit and rel > tol:
         Ap_u, Ap_v = apply_A(pu, pv, Ix, Iy, reg, level)
 
-        alpha = r2_old / (np.vdot(pu, Ap_u) + np.vdot(pv, Ap_v)) # (r_k^T r_K) / (p_k^T A p_k)
+        alpha = r2_old / (dot(pu, Ap_u) + dot(pv, Ap_v)) # (r_k^T r_K) / (p_k^T A p_k)
 
         u += alpha * pu # update solution
         v += alpha * pv
@@ -30,8 +32,8 @@ def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000, level=0):
         ru -= alpha * Ap_u  # residual
         rv -= alpha * Ap_v
 
-        r2_new = np.vdot(ru, ru) + np.vdot(rv, rv)
-        rel = np.sqrt(r2_new) / np.sqrt(r2_0)
+        r2_new = dot(ru, ru) + dot(rv, rv)
+        rel = np.sqrt(r2_new) / r_0
 
 
         beta = r2_new / r2_old
@@ -105,9 +107,7 @@ def of_vc(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1=2, s2=2, max_level=4, tol=1e-8, ma
         u, v = V_cycle(u, v, Ix, Iy, reg, rhsu, rhsv, s1, s2, level=0, max_level=max_level)
         rhu, rhv = residual(u, v, Ix, Iy, reg, rhsu, rhsv, level=0)
         r2_new = np.vdot(rhu, rhu) + np.vdot(rhv, rhv)
-        print(f"r2_new: {r2_new}, r2_0: {r2_0}")
         rel = np.sqrt(r2_new) / np.sqrt(r2_0)
-        print(f"V-cycle iteration {it+1}, relative residual: {rel:.2e}")
         res_hist.append(rel)
         it += 1
 

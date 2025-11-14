@@ -2,15 +2,14 @@ import numpy as np
 from scipy.ndimage import gaussian_filter
 
 def forward_diff_boundary(I):
-    n, m = I.shape
-    dx = np.zeros_like(I)
-    dy = np.zeros_like(I)
+    dx = np.empty_like(I)
+    dy = np.empty_like(I)
 
-    dx[:, :m-1] = I[:, 1:] - I[:, :-1]
-    dx[:, m-1] = I[:, m-1] - I[:, m-2]
+    dx[:, :-1] = I[:, 1:] - I[:, :-1]
+    dx[:, -1]  = I[:, -1] - I[:, -2]
 
-    dy[:n-1, :] = I[1:, :] - I[:-1, :]
-    dy[n-1, :] = I[n-1, :] - I[n-2, :]
+    dy[:-1, :] = I[1:, :] - I[:-1, :]
+    dy[-1, :]  = I[-1, :] - I[-2, :]
     return dx, dy
 
 
@@ -65,12 +64,17 @@ def zero_boundary(a):
     a[:, 0] = a[:, -1] = 0.0
     return a
 
+
 def apply_A(u, v, Ix, Iy, reg, level=0):
     h2inv = 4.0 ** (-level)
     Lu = laplacian5(u)
     Lv = laplacian5(v)
-    Au = (Ix * Ix) * u + (Ix * Iy) * v - reg * (h2inv * Lu)
-    Av = (Ix * Iy) * u + (Iy * Iy) * v - reg * (h2inv * Lv)
-    return zero_boundary(Au), zero_boundary(Av) #Enforce zero BCs
 
+    Ix2  = Ix * Ix
+    Iy2  = Iy * Iy
+    IxIy = Ix * Iy
 
+    Au = Ix2 * u + IxIy * v - reg * (h2inv * Lu)
+    Av = IxIy * u + Iy2 * v - reg * (h2inv * Lv)
+
+    return zero_boundary(Au), zero_boundary(Av)  #Enforce zero BCs
