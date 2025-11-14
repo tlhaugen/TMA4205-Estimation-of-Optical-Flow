@@ -1,5 +1,74 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import time
+
+def init_results(methods, Ns):
+    """
+    Create a results dictionary for storing numerical experiment data.
+
+    methods : list of method names
+    Ns      : list of problem sizes
+    """
+    Ns_array = np.array(Ns, dtype=int)
+
+    results = {}
+
+    for method in methods:
+        results[method] = {
+            "N": Ns_array.copy(),
+            "iterations": np.zeros(len(Ns)),
+            "time": np.zeros(len(Ns)),
+            "residual_history": [[] for _ in Ns],
+        }
+
+    return results
+
+
+
+def run_all_methods(methods, Ns, results, tol, maxit,
+                    generate_test_image, image_preprocess,
+                    solvers_dict, testcase=2):
+    """
+    Run all solvers on different grid sizes and fill results dict.
+
+    methods: list of method names (matching keys in results)
+    Ns: list of problem sizes
+    results:dictionary from init_results()
+    tol, maxit: solver parameters
+    generate_test_image: function(N, testcase) → (Im_0, Im_1)
+    image_preprocess: preprocess function
+    solvers_dict: {"cg": of_cg, "vc": of_vc, "pcg": run_pcg}
+    testcase: which synthetic test to run
+    """
+
+    for k, N in enumerate(Ns):
+
+        # Regularisation parameter λ = 4^(log2(N) - 4)
+        lam = 4 ** (int(np.log2(N)) - 4)
+
+        #Generate and preprocess images 
+        Im_0, Im_1 = generate_test_image(N, testcase=testcase)
+        u0, v0, Ix, Iy, rhsu, rhsv, I0, I1 = image_preprocess(Im_0, Im_1)
+
+    
+        for method in methods:
+            solver = solvers_dict[method]
+
+            start = time.time()
+            u, v, it, rel_res, res_hist = solver(
+                u0, v0, Ix, Iy, lam, rhsu, rhsv, tol=tol, maxit=maxit
+            )
+            elapsed = time.time() - start
+
+            #Store results
+            results[method]["iterations"][k] = it
+            results[method]["time"][k] = elapsed
+            results[method]["residual_history"][k] = res_hist
+
+            print(f"{method.upper():>4} → iter={it:4d}, time={elapsed:.3f}s")
+
+    return results
+
 
 
 def plot_flow_field(I0, u, v, method='cg'):
@@ -82,6 +151,8 @@ def plot_performance(results, method="cg"):
     plt.suptitle(f"Performance metrics for {method} method")
     plt.tight_layout()
     plt.show()
+
+
 
 
 # def plot_flow_field(I0, u, v, method = 'cg'):
