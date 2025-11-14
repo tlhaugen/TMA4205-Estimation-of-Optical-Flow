@@ -84,8 +84,8 @@ def plot_flow_field(I0, I1, u, v, method='cg'):
 
     # 2) Second grayscale image
     ax1.imshow(I1, cmap="gray")
-    ax0.set_title(f"First input image ({u.shape[0]}x{u.shape[1]})")
-    ax0.axis("off")
+    ax1.set_title(f"Second input image ({u.shape[0]}x{u.shape[1]})")
+    ax1.axis("off")
 
     # 3) Flow magnitude
     im = ax2.imshow(flow_mag, cmap="inferno")
@@ -140,8 +140,8 @@ def plot_quiver(I0, u1, v1, u2, v2, u3, v3, step=20):
     mask = (X % step == 0) & (Y % step == 0)
 
     # 2) Quiver overlay on the image
-    ax1.imshow(I0, cmap="gray")
-    ax1.quiver(
+    ax2.imshow(I0, cmap="gray")
+    ax2.quiver(
         X[mask], Y[mask],
         u3[mask], v3[mask],
         color="red",
@@ -150,8 +150,8 @@ def plot_quiver(I0, u1, v1, u2, v2, u3, v3, step=20):
         scale=1.0,
         width=0.004,
     )
-    ax1.set_title("Sparse flow vectors (PCG)")
-    ax1.axis("off")
+    ax2.set_title("Sparse flow vectors (PCG)")
+    ax2.axis("off")
 
     plt.suptitle(f"Optical Flow Field Comparison")
     plt.tight_layout()
