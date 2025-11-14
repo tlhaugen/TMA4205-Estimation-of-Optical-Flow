@@ -119,6 +119,7 @@ def prolongation(e2hu, e2hv):
     n_f = 2*(n_c - 1) + 1
     m_f = 2*(m_c - 1) + 1
 
+
     ehu = np.zeros((n_f, m_f))
     ehv = np.zeros((n_f,m_f))
     # inject coarse nodes
