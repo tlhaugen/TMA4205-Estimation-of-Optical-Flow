@@ -198,6 +198,46 @@ def plot_performance(results, method="cg"):
     plt.tight_layout()
     plt.show()
 
+def plot_performance_lambda(results, method="cg"):
+    data = results[method]
+    lams = data["lam"]
+    iters = data["iterations"]
+    times = data["time"]
+    histories = data["residual_history"]
+
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    ax0, ax1, ax2 = axes
+
+    # 1) Convergence histories for different lambda values
+    for lam, res in zip(lams, histories):
+        if len(res) == 0:
+            continue
+        ax0.semilogy(res, label=f"λ={lam:.0f}")
+
+    ax0.set_title(f"Convergence history ({method})")
+    ax0.set_xlabel("Iteration")
+    ax0.set_ylabel("Relative residual")
+    ax0.legend()
+    ax0.grid(True, which="both", ls="--", lw=0.5)
+
+    # 2) Iterations vs lambda
+    ax1.plot(lams, iters, "o-", lw=2)
+    ax1.set_title(f"Iterations vs λ ({method})")
+    ax1.set_xlabel("λ")
+    ax1.set_ylabel("Number of iterations")
+    ax1.grid(True)
+
+    # 3) Computation time vs lambda
+    ax2.plot(lams, times, "o-", lw=2)
+    ax2.set_title(f"Computation time vs λ ({method})")
+    ax2.set_xlabel("λ")
+    ax2.set_ylabel("Time [s]")
+    ax2.grid(True)
+
+    plt.suptitle(f"Performance metrics for {method} method")
+    plt.tight_layout()
+    plt.show()
+
 
 
 def run_vc_param_grid(
