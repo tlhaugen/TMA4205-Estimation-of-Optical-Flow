@@ -71,34 +71,20 @@ def run_all_methods(methods, Ns, results,
 
 
 
-def plot_flow_field(I0, u, v, method='cg'):
+def plot_flow_field(I0, I1, u, v, method='cg'):
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
     ax0, ax1, ax2 = axes  # unpack for clarity
 
     flow_mag = np.sqrt(u**2 + v**2)
-    step = 40  # spacing for quiver arrows
-
-    # grid for quiver
-    Y, X = np.mgrid[0:u.shape[0], 0:u.shape[1]]
-    mask = (X % step == 0) & (Y % step == 0)
 
     # 1) Original grayscale image
     ax0.imshow(I0, cmap="gray")
-    ax0.set_title(f"Input image ({u.shape[0]}x{u.shape[1]})")
+    ax0.set_title(f"First input image ({u.shape[0]}x{u.shape[1]})")
     ax0.axis("off")
 
-    # 2) Quiver overlay on the image
-    ax1.imshow(I0, cmap="gray")
-    ax1.quiver(
-        X[mask], Y[mask],
-        u[mask], v[mask],
-        color="red",
-        angles="xy",
-        scale_units="xy",
-        scale=1.0,
-        width=0.004,
-    )
-    ax1.set_title("Sparse flow vectors")
+    # 2) Second grayscale image
+    ax1.imshow(I1, cmap="gray")
+    ax1.set_title(f"Second input image ({u.shape[0]}x{u.shape[1]})")
     ax1.axis("off")
 
     # 3) Flow magnitude
@@ -111,6 +97,65 @@ def plot_flow_field(I0, u, v, method='cg'):
     plt.tight_layout()
     plt.show()
 
+def plot_quiver(I0, u1, v1, u2, v2, u3, v3, step=20):
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    ax0, ax1, ax2 = axes  # unpack for clarity
+    
+    # grid for quiver
+    Y, X = np.mgrid[0:u1.shape[0], 0:u1.shape[1]]
+    mask = (X % step == 0) & (Y % step == 0)
+
+    # 1) Quiver overlay on the image
+    ax0.imshow(I0, cmap="gray")
+    ax0.quiver(
+        X[mask], Y[mask],
+        u1[mask], v1[mask],
+        color="red",
+        angles="xy",
+        scale_units="xy",
+        scale=1.0,
+        width=0.004,
+    )
+    ax0.set_title("Sparse flow vectors (CG)")
+    ax0.axis("off")
+
+    Y, X = np.mgrid[0:u2.shape[0], 0:u2.shape[1]]
+    mask = (X % step == 0) & (Y % step == 0)
+
+    # 2) Quiver overlay on the image
+    ax1.imshow(I0, cmap="gray")
+    ax1.quiver(
+        X[mask], Y[mask],
+        u2[mask], v2[mask],
+        color="red",
+        angles="xy",
+        scale_units="xy",
+        scale=1.0,
+        width=0.004,
+    )
+    ax1.set_title("Sparse flow vectors (VC)")
+    ax1.axis("off")
+
+    Y, X = np.mgrid[0:u3.shape[0], 0:u3.shape[1]]
+    mask = (X % step == 0) & (Y % step == 0)
+
+    # 2) Quiver overlay on the image
+    ax2.imshow(I0, cmap="gray")
+    ax2.quiver(
+        X[mask], Y[mask],
+        u3[mask], v3[mask],
+        color="red",
+        angles="xy",
+        scale_units="xy",
+        scale=1.0,
+        width=0.004,
+    )
+    ax2.set_title("Sparse flow vectors (PCG)")
+    ax2.axis("off")
+
+    plt.suptitle(f"Optical Flow Field Comparison")
+    plt.tight_layout()
+    plt.show()
 
 def plot_performance(results, method="cg"):
     data = results[method]
