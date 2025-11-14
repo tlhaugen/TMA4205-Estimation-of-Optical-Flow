@@ -25,9 +25,9 @@ def init_results(methods, Ns):
 
 
 
-def run_all_methods(methods, Ns, results, tol, maxit,
+def run_all_methods(methods, Ns, results, 
                     generate_test_image, image_preprocess,
-                    solvers_dict, testcase=2):
+                    solvers_dict, testcase=2, tol=1e-8, maxit=2000,):
     """
     Run all solvers on different grid sizes and fill results dict.
 
