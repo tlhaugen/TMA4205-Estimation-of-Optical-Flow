@@ -349,7 +349,7 @@ def plot_vc_param_comparison(
                 groups[key] = []
             groups[key].append(r)
 
-            
+
     plt.figure(figsize=(8, 6))
     for label, group_records in groups.items():
         group_sorted = sorted(group_records, key=lambda r: r[x_param])

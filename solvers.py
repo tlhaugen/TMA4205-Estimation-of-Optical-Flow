@@ -3,48 +3,99 @@ import numpy as np
 from utilities import zero_boundary, apply_A
 from utilities_multigrid import prolongation, restriction, residual, smoothing
 
-def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000, level=0):
+
+
+def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv,
+          tol=1e-8, maxit=2000, level=0,
+          preconditioner=None, **pc_kwargs):
+    """
+    Conjugate Gradient (CG) or Preconditioned CG (PCG) for the optical flow system.
+    
+    If preconditioner is None ->standard CG.
+    If preconditioner is a function.
+    """
+
     u = zero_boundary(u0.copy())
     v = zero_boundary(v0.copy())
-    Au, Av = apply_A(u, v, Ix, Iy, reg, level=level) # Initial residual
-    it = 0
 
+    # Initial residual r0 = b - A u0
+    Au, Av = apply_A(u, v, Ix, Iy, reg, level)
     ru = zero_boundary(rhsu.copy()) - Au
     rv = zero_boundary(rhsv.copy()) - Av
-    r2_0 = np.vdot(ru, ru) + np.vdot(rv, rv)
-    r_0 = np.sqrt(r2_0)
 
-    pu = ru.copy()
-    pv = rv.copy()
-    r2_old = r2_0
+    # Initial residual norm
+    r2_0 = np.vdot(ru, ru) + np.vdot(rv, rv)
+    if r2_0 == 0.0:
+        return u, v, 0, 0.0, [0.0]
+
+    r0_norm = np.sqrt(r2_0)
     res_hist = [1.0]
+
+    #Preconditioned CG: compute z0 = M^{-1} r0
+    if preconditioner is None:
+        zu, zv = ru.copy(), rv.copy() # z = r  (CG)
+    else:
+        zu, zv = preconditioner(    # z = M^{-1} r
+            np.zeros_like(ru), np.zeros_like(rv),
+            Ix, Iy, reg, ru, rv, **pc_kwargs)
+
+    # p0 = z0
+    pu = zu.copy()
+    pv = zv.copy()
+
+    rz_old = np.vdot(ru, zu) + np.vdot(rv, zv)
+
+    it = 0
     rel = 1.0
     dot = np.vdot
 
     while it < maxit and rel > tol:
+
         Ap_u, Ap_v = apply_A(pu, pv, Ix, Iy, reg, level)
 
-        alpha = r2_old / (dot(pu, Ap_u) + dot(pv, Ap_v)) # (r_k^T r_K) / (p_k^T A p_k)
+        # alpha = (r_k^T z_k) / (p_k^T A p_k)
+        denom = dot(pu, Ap_u) + dot(pv, Ap_v)
+        alpha = rz_old / denom
 
-        u += alpha * pu # update solution
+        # Update solution
+        u += alpha * pu
         v += alpha * pv
 
-        ru -= alpha * Ap_u  # residual
+        # Update residual
+        ru -= alpha * Ap_u
         rv -= alpha * Ap_v
 
+        #Convergence
         r2_new = dot(ru, ru) + dot(rv, rv)
-        rel = np.sqrt(r2_new) / r_0
-
-
-        beta = r2_new / r2_old
-        pu = ru + beta * pu
-        pv = rv + beta * pv
-
-        r2_old = r2_new
+        rel = np.sqrt(r2_new) / r0_norm
         res_hist.append(rel)
+
+        if rel <= tol:
+            break
+
+        # Apply preconditioner: z_{k+1} = M^{-1} r_{k+1}
+        if preconditioner is None:
+            zu, zv = ru.copy(), rv.copy()
+        else:
+            zu, zv = preconditioner(
+                np.zeros_like(ru), np.zeros_like(rv),
+                Ix, Iy, reg, ru, rv, **pc_kwargs)
+
+        # Compute beta = (r_{k+1}^T z_{k+1}) / (r_k^T z_k)
+        rz_new = dot(ru, zu) + dot(rv, zv)
+        beta = rz_new / rz_old
+
+        #Update direction
+        pu = zu + beta * pu
+        pv = zv + beta * pv
+
+        
+        rz_old = rz_new
         it += 1
+
     return u, v, it, rel, res_hist
 
+print(1)
 
 def V_cycle(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1, s2, level, max_level):
     '''
@@ -110,8 +161,62 @@ def of_vc(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1=2, s2=2, max_level=4, tol=1e-8, ma
     return u, v, it, rel, res_hist
 
 
+# def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000, level=0, preconditioner = None, **pc_kwargs):
+    
+#     u = zero_boundary(u0.copy())
+#     v = zero_boundary(v0.copy())
+#     Au, Av = apply_A(u, v, Ix, Iy, reg, level=level) # Initial residual
 
-def run_pcg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
+#     ru = zero_boundary(rhsu.copy()) - Au
+#     rv = zero_boundary(rhsv.copy()) - Av
+#     r2_0 = np.vdot(ru, ru) + np.vdot(rv, rv)
+#     r_0 = np.sqrt(r2_0)
+
+#     r2_old = r2_0
+#     res_hist = [1.0]
+#     rel = 1.0
+
+
+#     if preconditioner is None:
+#         zu, zv = ru.copy(), rv.copy()          # z = r  (CG)
+#     else:
+#         zu, zv = preconditioner(               # z = M^{-1} r
+#             np.zeros_like(ru), np.zeros_like(rv),
+#             Ix, Iy, reg, ru, rv, **pc_kwargs)
+#     p0 = z0
+#     pu = zu.copy()
+#     pv = zv.copy()
+
+#     rz_old = np.vdot(ru, zu) + np.vdot(rv, zv)
+
+#     it = 0
+#     rel = 1.0
+#     dot = np.vdot
+
+#     while it < maxit and rel > tol:
+#         Ap_u, Ap_v = apply_A(pu, pv, Ix, Iy, reg, level)
+
+#         alpha = r2_old / (dot(pu, Ap_u) + dot(pv, Ap_v)) # (r_k^T r_K) / (p_k^T A p_k)
+
+#         u += alpha * pu # update solution
+#         v += alpha * pv
+
+#         ru -= alpha * Ap_u  # residual
+#         rv -= alpha * Ap_v
+
+#         r2_new = dot(ru, ru) + dot(rv, rv)
+#         rel = np.sqrt(r2_new) / r_0
+
+
+#         beta = r2_new / r2_old
+#         pu = ru + beta * pu
+#         pv = rv + beta * pv
+
+#         r2_old = r2_new
+#         res_hist.append(rel)
+#         it += 1
+#     return u, v, it, rel, res_hist
+# def run_pcg(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
     '''
     Solve the optical flow problem using Preconditioned Conjugate Gradient (PCG).
     '''
