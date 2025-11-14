@@ -28,7 +28,7 @@ def init_results(methods, Ns):
 
 def run_all_methods(methods, Ns, results, 
                     generate_test_image, image_preprocess,
-                    solvers_dict, testcase=2, tol=1e-8, maxit=2000,):
+                    solvers_dict,lam = 1.0, testcase=2, tol=1e-8, maxit=2000):
     """
     Run all solvers on different grid sizes and fill results dict.
 
@@ -199,6 +199,134 @@ def plot_performance(results, method="cg"):
     plt.show()
 
 
+
+def run_vc_param_grid(
+    N,
+    s1_list,
+    s2_list,
+    level_list,
+    lambda_list,
+    generate_test_image,
+    image_preprocess,
+    of_vc,
+    testcase=2,
+    tol=1e-8,
+    maxit=2000,
+):
+    
+    '''
+    run V_cycles for a grid of parameters and store results
+    returns flat list of records, each a dict with keys:
+    N, s1,s1, levels, lambda
+    iterations, time, residual_history
+    '''
+
+    # Generate and preprocess images
+    Im_0, Im_1 = generate_test_image(N, testcase)
+    u0, v0, Ix, Iy, rhsu, rhsv, I0, I1 = image_preprocess(Im_0, Im_1)
+
+    records = []
+    for lam in lambda_list:
+        for levels in level_list:
+            for s1 in s1_list:
+                for s2 in s2_list:
+                    start = time.time()
+                    u, v, it, rel_res, res_hist = of_vc(
+                        u0,
+                        v0,
+                        Ix,
+                        Iy,
+                        lam,
+                        rhsu,
+                        rhsv,
+                        s1=s1,
+                        s2=s2,
+                        max_level=levels,
+                        tol=tol,
+                        maxit=maxit,
+                    )
+                    elapsed = time.time() - start
+
+                    record = {
+                        "N": N,
+                        "s1": s1,
+                        "s2": s2,
+                        "levels": levels,
+                        "lambda": lam,
+                        "iterations": it,
+                        "time": elapsed,
+                        "residual_history": res_hist,
+                    }
+                    records.append(record)
+    return records
+
+def filter_records(records, **conds):
+    """
+    Filter a list of record dicts by matching key=value pairs.
+    Example: filter_records(records, levels=4, lambda=1.0)
+    """
+    out = []
+    for r in records:
+        ok = True
+        for key, val in conds.items():
+            if r.get(key) != val:
+                ok = False
+                break
+        if ok:
+            out.append(r)
+    return out
+
+def plot_vc_param_comparison(
+    records,
+    x_param,
+    y_param = 'iterations',
+    group_by = None,
+    filters=None,
+    title = "V-cycle Parameter Comparison",
+):
+    """
+    Comparison potter for V_cycle parameter numerical experiments
+    records: list of record dicts from run_vc_param_grid
+    x_param: parameter name for x-axis
+    y_param: parameter name for y-axis (default: iterations)
+    group_by: parameter name to create separate lines
+    filters: dict of key=value pairs to filter records
+    title: plot title
+"""
+    if filters is not None:
+        records_f = filter_records(records, **filters)
+    else: 
+        records_f = list(records)
+
+    if group_by is None:
+        groups = {None : records_f}   
+
+    else: 
+        groups = {}
+        for r in records_f:
+            key = r[group_by]
+            if key not in groups:
+                groups[key] = []
+            groups[key].append(r)
+
+            
+    plt.figure(figsize=(8, 6))
+    for label, group_records in groups.items():
+        group_sorted = sorted(group_records, key=lambda r: r[x_param])
+        x_vals = [r[x_param] for r in group_sorted]
+        y_vals = [r[y_param] for r in group_sorted]
+        if group_by is None:
+            plt.plot(x_vals, y_vals, marker='o', label='Data')
+        else:
+            plt.plot(x_vals, y_vals, marker='o', label=f"{group_by}={label}")
+    plt.title(title)
+    plt.xlabel(x_param)
+    plt.ylabel(y_param)
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+  
 
 def summarize_results(results):
     """
