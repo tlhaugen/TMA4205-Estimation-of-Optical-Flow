@@ -71,10 +71,10 @@ def V_cycle(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1, s2, level, max_level):
 
     rhu,rhv = residual(u, v, Ix, Iy, reg, rhsu, rhsv, level=level)
     n,m = rhu.shape
-    n2, m2 = n // 2, m // 2
-    too_small_next = (n2 < 3) or (m2 < 3)   # stop coarsening if next level would have no interior
+    # n2, m2 = n // 2, m // 2
+    # too_small_next = (n2 < 3) or (m2 < 3)   # stop coarsening if next level would have no interior
 
-    if (level == max_level - 1) or too_small_next: 
+    if (level == max_level - 1): #or too_small_next: 
         ehu, ehv, *_ = of_cg(np.zeros_like(rhu), np.zeros_like(rhv), Ix, Iy, reg, rhu, rhv, level=level)
 
         u += ehu

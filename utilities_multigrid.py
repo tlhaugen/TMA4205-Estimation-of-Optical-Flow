@@ -117,10 +117,9 @@ def restriction(rhu, rhv, Ix, Iy):
 def prolongation(e2hu, e2hv):
 
     n_c, m_c = e2hu.shape
-
     n_f = 2*(n_c - 1) + 1
-    
     m_f = 2*(m_c - 1) + 1
+
     print(f'n_f = {n_f}, m_f = {m_f}')
     ehu = np.zeros((n_f, m_f))
     ehv = np.zeros((n_f,m_f))
