@@ -37,7 +37,7 @@ def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv,
     else:
         zu, zv = preconditioner(    # z = M^{-1} r
             np.zeros_like(ru), np.zeros_like(rv),
-            Ix, Iy, reg, ru, rv, **pc_kwargs)
+            Ix, Iy, reg, ru, rv, level=level, **pc_kwargs)
 
     # p0 = z0
     pu = zu.copy()
@@ -79,7 +79,7 @@ def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv,
         else:
             zu, zv = preconditioner(
                 np.zeros_like(ru), np.zeros_like(rv),
-                Ix, Iy, reg, ru, rv, **pc_kwargs)
+                Ix, Iy, reg, ru, rv, level=level, **pc_kwargs)
 
         # Compute beta = (r_{k+1}^T z_{k+1}) / (r_k^T z_k)
         rz_new = dot(ru, zu) + dot(rv, zv)
