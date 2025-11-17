@@ -502,7 +502,7 @@ def summarize_results(results):
 
     df = pd.DataFrame(rows).sort_values(["N", "method"])
 
-    return None
+    return df
 
 
 
