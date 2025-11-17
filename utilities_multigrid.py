@@ -20,7 +20,7 @@ def smoothing(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1, level, parity=0):
 
     # level scaling
     h2inv = 4.0**(-level)      # 1/h^2 with h = 2^level
-    gamma = reg * h2inv        # this multiplies Laplacian terms
+    gamma = reg * h2inv        #multiplier for laplacian term
 
     ir = range(1, n-1); jr = range(1, m-1)
     sweeps = max(1, s1 - int(level))
@@ -28,14 +28,14 @@ def smoothing(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1, level, parity=0):
     b = Ix * Iy
     c = Iy * Iy + 4.0 * gamma
     det = a * c - b * b
-    det[np.abs(det) < eps] = eps
+    det[np.abs(det) < eps] = eps #clamp to avoid division by zero
 
     for _ in range(sweeps):
         for p in (parity, 1 - parity):
             mask = np.zeros_like(u, dtype=bool)
-            mask[1:-1, 1:-1] = ((np.add.outer(np.arange(1, n-1), np.arange(1, m-1))) & 1) == p
+            mask[1:-1, 1:-1] = ((np.add.outer(np.arange(1, n-1), np.arange(1, m-1))) & 1) == p #mask to select red or black points
 
-            # neighbor sums (Dirichlet border assumed fixed; border values are present in u/v)
+            # neighbor sums 
             Su = (u[:-2, 1:-1] + u[2:, 1:-1] +
                   u[1:-1, :-2] + u[1:-1, 2:])
             Sv = (v[:-2, 1:-1] + v[2:, 1:-1] +

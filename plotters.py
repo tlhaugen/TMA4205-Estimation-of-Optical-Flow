@@ -240,7 +240,7 @@ def plot_quiver_lambda(I0, u_cg, v_cg, u_vc, v_vc, u_pcg, v_pcg, step=20):
         ax.set_title(f"Sparse flow vectors ({title})")
         ax.axis("off")
 
-    plt.suptitle("Optical Flow Field Comparison (Lambda Sweep Final λ)")
+    plt.suptitle("Optical Flow Field Comparison (Lambda Sweep Final lambda)")
     plt.tight_layout()
     plt.show()
 
@@ -526,6 +526,9 @@ def plot_gaussian_gradients(Im_0, Im_1, Ix, Iy, title_prefix="Gaussian level"):
 
     Im_0, Im_1 : preprocessed (e.g. Gaussian-smoothed, downscaled) frames
     Ix, Iy     : corresponding spatial derivatives (from image_preprocess)
+
+    AI declaration: This function was written by ChatGPT based on user prompt of
+    plotting Gaussian level image gradients.
     """
 
     Im_0 = Im_0.astype(float)
