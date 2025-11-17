@@ -7,6 +7,9 @@ from utilities import image_preprocess
 from image_gen import generate_test_image
 
 def init_image_results(Ns):
+    '''
+    AI declaration: This function was written by ChatGPT based on user prompt of making
+    a dict to store results from running optical flow solvers on images of different sizes.'''
     Ns_array = np.array(Ns, dtype=int)
     return {
         "cg": {
@@ -63,6 +66,7 @@ def run_all_image(Ns, results, tol=1e-8, maxit=2000, testcase=2):
     return results, u_cg, v_cg, u_vc, v_vc, u_pcg, v_pcg, I0, I1
 
 def init_lambda_results(lams):
+
     lams_array = np.array(lams, dtype=float)
     return {
         "cg": {
@@ -311,7 +315,7 @@ def plot_performance_lambda(results, method="cg"):
     ax0.legend()
     ax0.grid(True, which="both", ls="--", lw=0.5)
 
-    # 2) Iterations vs λ
+    # 2) Iterations vs lambda
     ax1.plot(lams, iters, "o-", lw=2)
     ax1.set_title(f"Iterations vs $\\lambda$ ({method})")
     ax1.set_xlabel("$\\lambda$")
@@ -319,7 +323,7 @@ def plot_performance_lambda(results, method="cg"):
     ax1.set_xscale("log", base=10)
     ax1.grid(True)
 
-    # 3) Computation time vs λ
+    # 3) Computation time vs lambda
     ax2.plot(lams, times, "o-", lw=2)
     ax2.set_title(f"Computation time vs $\\lambda$ ({method})")
     ax2.set_xlabel("$\\lambda$")
@@ -351,6 +355,9 @@ def run_vc_param_grid(
     returns flat list of records, each a dict with keys:
     N, s1,s1, levels, lambda
     iterations, time, residual_history
+
+    AI declaration: This function was written by ChatGPT based on user promtp of m
+    a dict to srore results from running V-cycles with different parameters.
     '''
 
     # Generate and preprocess images
@@ -396,6 +403,9 @@ def filter_records(records, **conds):
     """
     Filter a list of record dicts by matching key=value pairs.
     Example: filter_records(records, levels=4, lambda=1.0)
+    
+    AI declaration: This function was written by ChatGPT based on user prompt of
+    filtering a list of dicts by key-value conditions from the input dict of parameter conditions.
     """
     out = []
     for r in records:
@@ -424,6 +434,9 @@ def plot_vc_param_comparison(
     group_by: parameter name to create separate lines
     filters: dict of key=value pairs to filter records
     title: plot title
+
+    AI declaration: This function was written by ChatGPT based on user prompt of 
+    making a plotting function for V-cycle parameter comparison.
 """
     if filters is not None:
         records_f = filter_records(records, **filters)
