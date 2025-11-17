@@ -1,74 +1,122 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from image_gen import mycomputeColor, mycolorwheel
 import time
+from solvers import of_cg, of_vc, V_cycle
+from utilities import image_preprocess
+from image_gen import generate_test_image
 
-def init_results(methods, Ns):
-    """
-    Create a results dictionary for storing numerical experiment data.
-
-    methods : list of method names
-    Ns      : list of problem sizes
-    """
+def init_image_results(Ns):
     Ns_array = np.array(Ns, dtype=int)
-
-    results = {}
-
-    for method in methods:
-        results[method] = {
+    return {
+        "cg": {
             "N": Ns_array.copy(),
             "iterations": np.zeros(len(Ns)),
             "time": np.zeros(len(Ns)),
             "residual_history": [[] for _ in Ns],
-        }
+        },
+        "vc": {
+            "N": Ns_array.copy(),
+            "iterations": np.zeros(len(Ns)),
+            "time": np.zeros(len(Ns)),
+            "residual_history": [[] for _ in Ns],
+        },
+        "pcg": {
+            "N": Ns_array.copy(),
+            "iterations": np.zeros(len(Ns)),
+            "time": np.zeros(len(Ns)),
+            "residual_history": [[] for _ in Ns],
+        },
+    }
 
-    return results
 
 
-
-def run_all_methods(methods, Ns, results, 
-                    generate_test_image, image_preprocess,
-                    solvers_dict,lam = 1.0, testcase=2, tol=1e-8, maxit=2000):
-    """
-    Run all solvers on different grid sizes and fill results dict.
-
-    methods: list of method names (matching keys in results)
-    Ns: list of problem sizes
-    results:dictionary from init_results()
-    tol, maxit: solver parameters
-    generate_test_image: function(N, testcase) → (Im_0, Im_1)
-    image_preprocess: preprocess function
-    solvers_dict: {"cg": of_cg, "vc": of_vc, "pcg": run_pcg}
-    testcase: which synthetic test to run
-    """
-
+def run_all_image(Ns, results, tol=1e-8, maxit=2000, testcase=2):
     for k, N in enumerate(Ns):
-
-        # Regularisation parameter λ = 4^(log2(N) - 4)
         lam = 4 ** (int(np.log2(N)) - 4)
 
-        #Generate and preprocess images 
         Im_0, Im_1 = generate_test_image(N, testcase=testcase)
         u0, v0, Ix, Iy, rhsu, rhsv, I0, I1 = image_preprocess(Im_0, Im_1)
 
-    
-        for method in methods:
-            solver = solvers_dict[method]
+        # CG
+        start = time.time()
+        u_cg, v_cg, it_cg, rel_cg, res_cg = of_cg(u0, v0, Ix, Iy, lam, rhsu, rhsv, tol=tol, maxit=maxit)
+        results["cg"]["iterations"][k] = it_cg
+        results["cg"]["time"][k] = time.time() - start
+        results["cg"]["residual_history"][k] = res_cg
 
-            start = time.time()
-            u, v, it, rel_res, res_hist = solver(
-                u0, v0, Ix, Iy, lam, rhsu, rhsv, tol=tol, maxit=maxit
-            )
-            elapsed = time.time() - start
+        # VC
+        start = time.time()
+        u_vc, v_vc, it_vc, rel_vc, res_vc = of_vc(u0, v0, Ix, Iy, lam, rhsu, rhsv, tol=tol, maxit=maxit)
+        results["vc"]["iterations"][k] = it_vc
+        results["vc"]["time"][k] = time.time() - start
+        results["vc"]["residual_history"][k] = res_vc
 
-            #Store results
-            results[method]["iterations"][k] = it
-            results[method]["time"][k] = elapsed
-            results[method]["residual_history"][k] = res_hist
+        # PCG
+        start = time.time()
+        u_pcg, v_pcg, it_pcg, rel_pcg, res_pcg = of_cg(u0, v0, Ix, Iy, lam, rhsu, rhsv,tol=tol,maxit=maxit,
+            preconditioner=V_cycle, s1=2, s2=2, level=0, max_level=2)
+        results["pcg"]["iterations"][k] = it_pcg
+        results["pcg"]["time"][k] = time.time() - start
+        results["pcg"]["residual_history"][k] = res_pcg
 
-    return results
+    return results, u_cg, v_cg, u_vc, v_vc, u_pcg, v_pcg, I0, I1
 
+def init_lambda_results(lams):
+    lams_array = np.array(lams, dtype=float)
+    return {
+        "cg": {
+            "lam": lams_array.copy(),
+            "iterations": np.zeros(len(lams)),
+            "time": np.zeros(len(lams)),
+            "residual_history": [[] for _ in lams],
+        },
+        "vc": {
+            "lam": lams_array.copy(),
+            "iterations": np.zeros(len(lams)),
+            "time": np.zeros(len(lams)),
+            "residual_history": [[] for _ in lams],
+        },
+        "pcg": {
+            "lam": lams_array.copy(),
+            "iterations": np.zeros(len(lams)),
+            "time": np.zeros(len(lams)),
+            "residual_history": [[] for _ in lams],
+        },
+    }
+
+
+def run_all_lambda(lams, results, frame0_path, frame1_path, tol=1e-8, maxit=2000, maxit_vc=10, sigma=0.5, s1_vc=5, s2_vc=5, max_level_vc=2, s1_pcg=4, s2_pcg=4, max_level_pcg=2):
+
+    Im_0_raw = plt.imread(frame0_path)
+    Im_1_raw = plt.imread(frame1_path)
+    u0, v0, Ix, Iy, rhsu, rhsv, I0, I1 = image_preprocess(Im_0_raw, Im_1_raw, sigma=sigma)
+
+    for k, lam in enumerate(lams):
+
+        # CG
+        start = time.time()
+        u_cg, v_cg, it_cg, rel_cg, res_cg = of_cg(u0, v0, Ix, Iy, lam, rhsu, rhsv, tol=tol, maxit=maxit)
+        results["cg"]["iterations"][k] = it_cg
+        results["cg"]["time"][k] = time.time() - start
+        results["cg"]["residual_history"][k] = res_cg
+
+        # VC
+        start = time.time()
+        u_vc, v_vc, it_vc, rel_vc, res_vc = of_vc(u0, v0, Ix, Iy, lam, rhsu, rhsv, s1=s1_vc, s2=s2_vc, max_level=max_level_vc, tol=tol, maxit=maxit_vc)
+        results["vc"]["iterations"][k] = it_vc
+        results["vc"]["time"][k] = time.time() - start
+        results["vc"]["residual_history"][k] = res_vc
+
+        # PCG
+        start = time.time()
+        u_pcg, v_pcg, it_pcg, rel_pcg, res_pcg = of_cg(
+            u0, v0, Ix, Iy, lam, rhsu, rhsv, tol=tol, maxit=maxit, preconditioner=V_cycle, s1=s1_pcg, s2=s2_pcg, level=0, max_level=max_level_pcg)
+        results["pcg"]["iterations"][k] = it_pcg
+        results["pcg"]["time"][k] = time.time() - start
+        results["pcg"]["residual_history"][k] = res_pcg
+
+    return results, u_cg, v_cg, u_vc, v_vc, u_pcg, v_pcg, I0, I1
 
 
 def plot_flow_field(I0, I1, u, v, method='cg'):
@@ -158,6 +206,40 @@ def plot_quiver(I0, u1, v1, u2, v2, u3, v3, step=20):
     plt.tight_layout()
     plt.show()
 
+def plot_quiver_lambda(I0, u_cg, v_cg, u_vc, v_vc, u_pcg, v_pcg, step=20):
+    """
+    Plots quiver arrows of optical flow for CG, VC, and PCG from lambda comparison.
+
+    Parameters:
+        I0: Grayscale image to overlay arrows on
+        u_*, v_*: Flow components for each method (from last lambda run)
+        step: Grid spacing for quiver
+    """
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    titles = ["CG", "VC", "PCG"]
+    flows = [(u_cg, v_cg), (u_vc, v_vc), (u_pcg, v_pcg)]
+
+    for ax, (u, v), title in zip(axes, flows, titles):
+        Y, X = np.mgrid[0:u.shape[0], 0:u.shape[1]]
+        mask = (X % step == 0) & (Y % step == 0)
+
+        ax.imshow(I0, cmap="gray")
+        ax.quiver(
+            X[mask], Y[mask],
+            u[mask], v[mask],
+            color="red",
+            angles="xy",
+            scale_units="xy",
+            scale=None,  # Let matplotlib autoscale
+            width=0.004
+        )
+        ax.set_title(f"Sparse flow vectors ({title})")
+        ax.axis("off")
+
+    plt.suptitle("Optical Flow Field Comparison (Lambda Sweep Final λ)")
+    plt.tight_layout()
+    plt.show()
+
 def plot_performance(results, method="cg"):
     data = results[method]
     N = data["N"]
@@ -185,6 +267,7 @@ def plot_performance(results, method="cg"):
     ax1.set_title(f"Iterations vs image size ({method})")
     ax1.set_xlabel("Image size N")
     ax1.set_ylabel("Number of iterations")
+    ax1.set_xscale("log", base=2)
     ax1.grid(True)
 
     # 3) Computation time vs image size
@@ -192,6 +275,7 @@ def plot_performance(results, method="cg"):
     ax2.set_title(f"Computation time vs image size ({method})")
     ax2.set_xlabel("Image size N")
     ax2.set_ylabel("Time [s]")
+    ax2.set_xscale("log", base=2)
     ax2.grid(True)
 
     plt.suptitle(f"Performance metrics for {method} method")
@@ -200,19 +284,26 @@ def plot_performance(results, method="cg"):
 
 def plot_performance_lambda(results, method="cg"):
     data = results[method]
-    lams = data["lam"]
-    iters = data["iterations"]
-    times = data["time"]
+    lams = np.array(data["lam"])
+    iters = np.array(data["iterations"])
+    times = np.array(data["time"])
     histories = data["residual_history"]
+
+    # Sort by lambda
+    sorted_indices = np.argsort(lams)
+    lams = lams[sorted_indices]
+    iters = iters[sorted_indices]
+    times = times[sorted_indices]
+    histories = [histories[i] for i in sorted_indices]
 
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
     ax0, ax1, ax2 = axes
 
-    # 1) Convergence histories for different lambda values
+    # 1) Convergence histories
     for lam, res in zip(lams, histories):
         if len(res) == 0:
             continue
-        ax0.semilogy(res, label=f"λ={lam:.0f}")
+        ax0.semilogy(res, label=f"$\\lambda$={lam:.2g}")
 
     ax0.set_title(f"Convergence history ({method})")
     ax0.set_xlabel("Iteration")
@@ -220,24 +311,25 @@ def plot_performance_lambda(results, method="cg"):
     ax0.legend()
     ax0.grid(True, which="both", ls="--", lw=0.5)
 
-    # 2) Iterations vs lambda
+    # 2) Iterations vs λ
     ax1.plot(lams, iters, "o-", lw=2)
-    ax1.set_title(f"Iterations vs λ ({method})")
-    ax1.set_xlabel("λ")
+    ax1.set_title(f"Iterations vs $\\lambda$ ({method})")
+    ax1.set_xlabel("$\\lambda$")
     ax1.set_ylabel("Number of iterations")
+    ax1.set_xscale("log", base=10)
     ax1.grid(True)
 
-    # 3) Computation time vs lambda
+    # 3) Computation time vs λ
     ax2.plot(lams, times, "o-", lw=2)
-    ax2.set_title(f"Computation time vs λ ({method})")
-    ax2.set_xlabel("λ")
+    ax2.set_title(f"Computation time vs $\\lambda$ ({method})")
+    ax2.set_xlabel("$\\lambda$")
     ax2.set_ylabel("Time [s]")
+    ax2.set_xscale("log", base=10)
     ax2.grid(True)
 
-    plt.suptitle(f"Performance metrics for {method} method")
+    plt.suptitle(f"Performance metrics for {method.upper()} method")
     plt.tight_layout()
     plt.show()
-
 
 
 def run_vc_param_grid(
@@ -410,8 +502,7 @@ def summarize_results(results):
 
     df = pd.DataFrame(rows).sort_values(["N", "method"])
 
-    #print(df.to_markdown(index=False, floatfmt=".3g"))
-    return df
+    return None
 
 
 
@@ -454,118 +545,5 @@ def plot_gaussian_gradients(Im_0, Im_1, Ix, Iy, title_prefix="Gaussian level"):
     plt.show()
 
 
-def init_lambda_results(methods, lams):
-    """
-    Create a results dict indexed by method, with 'lam', 'iterations',
-    'time', and 'residual_history', matching plot_performance_lambda.
-    """
-    lams_arr = np.array(lams, dtype=float)
-    results = {}
-    for method in methods:
-        results[method] = {
-            "lam": lams_arr.copy(),
-            "iterations": np.zeros(len(lams_arr), dtype=int),
-            "time": np.zeros(len(lams_arr), dtype=float),
-            "residual_history": [[] for _ in lams_arr],
-        }
-    return results
 
-
-def run_lambda_experiment(
-    lams,
-    frame0_path,
-    frame1_path,
-    N_synth,
-    generate_test_image,
-    image_preprocess,
-    of_cg,
-    of_vc,
-    V_cycle,
-    tol=1e-8,
-    maxit_cg=3000,
-    maxit_vc=10,
-    s1_vc=5,
-    s2_vc=5,
-    max_level_vc=2,
-    s1_pcg=4,
-    s2_pcg=4,
-    max_level_pcg=2,
-    gauss_scale=0.5,
-):
-    """
-    Run CG, VC, and PCG for several lambda values.
-
-    - CG and PCG are run on the real image pair (frame0_path, frame1_path).
-    - VC is run on a synthetic Gaussian test image of size N_synth.
-
-    Returns:
-        results : dict in the format expected by plot_performance_lambda
-        vis_data: (Im0_real, Im1_real, u_cg, v_cg, u_vc, v_vc, u_pcg, v_pcg)
-                  using the last lambda in `lams` (for plotting flow fields).
-    """
-
-    methods = ["cg", "vc", "pcg"]
-    results = init_lambda_results(methods, lams)
-
-    # --- Real image pair: preprocess once ---
-    Im_0_raw = plt.imread(frame0_path)
-    Im_1_raw = plt.imread(frame1_path)
-    u0_real, v0_real, Ix_real, Iy_real, rhsu_real, rhsv_real, Im0_real, Im1_real = \
-        image_preprocess(Im_0_raw, Im_1_raw, gauss_scale)
-
-    # # --- Synthetic Gaussian test image: preprocess once ---
-    # Im_0_synth, Im_1_synth = generate_test_image(N_synth, testcase=2)
-    # u0_synth, v0_synth, Ix_synth, Iy_synth, rhsu_synth, rhsv_synth, Im0_s, Im1_s = \
-    #     image_preprocess(Im_0_synth, Im_1_synth, gauss_scale)
-
-    # placeholders for last flows (for plotting)
-    u_cg = v_cg = u_vc = v_vc = u_pcg = v_pcg = None
-
-    for k, lam in enumerate(lams):
-        print(f"\n=== λ = {lam} ===")
-
-        # CG
-        start = time.time()
-        u_cg, v_cg, it_cg, rel_cg, res_cg = of_cg(
-            u0_real, v0_real, Ix_real, Iy_real, lam,
-            rhsu_real, rhsv_real,
-            tol=tol, maxit=maxit_cg
-        )
-        t_cg = time.time() - start
-        results["cg"]["iterations"][k] = it_cg
-        results["cg"]["time"][k] = t_cg
-        results["cg"]["residual_history"][k] = res_cg
-        print(f"CG:  it={it_cg:4d}, time={t_cg:.3f}s, final rel={rel_cg:.2e}")
-
-        # Vcycle
-        start = time.time()
-        u_vc, v_vc, it_vc, rel_vc, res_vc = of_vc(
-            u0_real, v0_real, Ix_real, Iy_real, lam,
-            rhsu_real, rhsv_real,
-            s1=s1_vc, s2=s2_vc, max_level=max_level_vc,
-            tol=tol, maxit=maxit_vc
-        )
-        t_vc = time.time() - start
-        results["vc"]["iterations"][k] = it_vc
-        results["vc"]["time"][k] = t_vc
-        results["vc"]["residual_history"][k] = res_vc
-        print(f"VC:  it={it_vc:4d}, time={t_vc:.3f}s, final rel={rel_vc:.2e}")
-
-        # PCG
-        start = time.time()
-        u_pcg, v_pcg, it_pcg, rel_pcg, res_pcg = of_cg(
-            u0_real, v0_real, Ix_real, Iy_real, lam,
-            rhsu_real, rhsv_real,
-            tol=tol, maxit=maxit_cg,
-            preconditioner=V_cycle,
-            s1=s1_pcg, s2=s2_pcg, level=0, max_level=max_level_pcg
-        )
-        t_pcg = time.time() - start
-        results["pcg"]["iterations"][k] = it_pcg
-        results["pcg"]["time"][k] = t_pcg
-        results["pcg"]["residual_history"][k] = res_pcg
-        print(f"PCG: it={it_pcg:4d}, time={t_pcg:.3f}s, final rel={rel_pcg:.2e}")
-
-    vis_data = (Im0_real, Im1_real, u_cg, v_cg, u_vc, v_vc, u_pcg, v_pcg)
-    return results, vis_data
 
