@@ -99,6 +99,7 @@ def plot_flow_field(I0, I1, u, v, method='cg'):
     plt.tight_layout()
     plt.show()
 
+
 def plot_quiver(I0, u1, v1, u2, v2, u3, v3, step=20):
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
     ax0, ax1, ax2 = axes  # unpack for clarity
@@ -156,52 +157,6 @@ def plot_quiver(I0, u1, v1, u2, v2, u3, v3, step=20):
     ax2.axis("off")
 
     plt.suptitle(f"Optical Flow Field Comparison")
-    plt.tight_layout()
-    plt.show()
-
-def plot_color_wheel(I0, I1, wheel_size=32):
-    wheel = mycolorwheel(wheel_size)
-
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-    ax0, ax1, ax2 = axes
-
-    ax0.imshow(I0, cmap="gray")
-    ax0.set_title("First input image")
-    ax0.axis("off")
-
-    ax1.imshow(I1, cmap="gray")
-    ax1.set_title("Second input image")
-    ax1.axis("off")
-
-    ax2.imshow(wheel)
-    ax2.set_title("Flow direction color wheel")
-    ax2.axis("off")
-
-    plt.suptitle("Input images and flow color wheel")
-    plt.tight_layout()
-    plt.show()
-
-def plot_colored_flow(I0, u_cg, v_cg, u_vc, v_vc,  u_pcg, v_pcg):
-    flow_cg  = mycomputeColor(u_cg,  v_cg)
-    flow_vc  = mycomputeColor(u_vc,  v_vc)
-    flow_pcg = mycomputeColor(u_pcg, v_pcg)
-
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-    ax0, ax1, ax2 = axes
-
-    ax0.imshow(flow_cg)
-    ax0.set_title("Colored flow (CG)")
-    ax0.axis("off")
-
-    ax1.imshow(flow_vc)
-    ax1.set_title("Colored flow (VC)")
-    ax1.axis("off")
-
-    ax2.imshow(flow_pcg)
-    ax2.set_title("Colored flow (PCG)")
-    ax2.axis("off")
-
-    plt.suptitle("Optical Flow (HSV encoding) - method comparison")
     plt.tight_layout()
     plt.show()
 

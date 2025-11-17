@@ -95,7 +95,6 @@ def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv,
 
     return u, v, it, rel, res_hist
 
-print(1)
 
 def V_cycle(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1, s2, level, max_level):
     '''
