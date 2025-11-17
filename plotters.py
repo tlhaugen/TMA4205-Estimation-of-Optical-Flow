@@ -67,8 +67,6 @@ def run_all_methods(methods, Ns, results,
             results[method]["time"][k] = elapsed
             results[method]["residual_history"][k] = res_hist
 
-            print(f"{method.upper():>4} → iter={it:4d}, time={elapsed:.3f}s")
-
     return results
 
 
@@ -414,3 +412,160 @@ def summarize_results(results):
 
     #print(df.to_markdown(index=False, floatfmt=".3g"))
     return df
+
+
+
+
+def plot_gaussian_gradients(Im_0, Im_1, Ix, Iy, title_prefix="Gaussian level"):
+    """
+    Visualise Ix, Iy, It for the Gaussian / pyramid level images.
+
+    Im_0, Im_1 : preprocessed (e.g. Gaussian-smoothed, downscaled) frames
+    Ix, Iy     : corresponding spatial derivatives (from image_preprocess)
+    """
+
+    Im_0 = Im_0.astype(float)
+    Im_1 = Im_1.astype(float)
+
+    # Temporal derivative at this (Gaussian) level
+    It = Im_1 - Im_0
+
+    plt.figure(figsize=(15, 4))
+
+    # Ix
+    plt.subplot(1, 3, 1)
+    im1 = plt.imshow(Ix, cmap="viridis")
+    plt.title(f"{title_prefix}: Ix = ∂I/∂x")
+    plt.colorbar(im1)
+
+    # Iy
+    plt.subplot(1, 3, 2)
+    im2 = plt.imshow(Iy, cmap="viridis")
+    plt.title(f"{title_prefix}: Iy = ∂I/∂y")
+    plt.colorbar(im2)
+
+    # It
+    plt.subplot(1, 3, 3)
+    im3 = plt.imshow(It, cmap="viridis")
+    plt.title(f"{title_prefix}: It = ∂I/∂t")
+    plt.colorbar(im3)
+
+    plt.tight_layout()
+    plt.show()
+
+
+def init_lambda_results(methods, lams):
+    """
+    Create a results dict indexed by method, with 'lam', 'iterations',
+    'time', and 'residual_history', matching plot_performance_lambda.
+    """
+    lams_arr = np.array(lams, dtype=float)
+    results = {}
+    for method in methods:
+        results[method] = {
+            "lam": lams_arr.copy(),
+            "iterations": np.zeros(len(lams_arr), dtype=int),
+            "time": np.zeros(len(lams_arr), dtype=float),
+            "residual_history": [[] for _ in lams_arr],
+        }
+    return results
+
+
+def run_lambda_experiment(
+    lams,
+    frame0_path,
+    frame1_path,
+    N_synth,
+    generate_test_image,
+    image_preprocess,
+    of_cg,
+    of_vc,
+    V_cycle,
+    tol=1e-8,
+    maxit_cg=3000,
+    maxit_vc=10,
+    s1_vc=5,
+    s2_vc=5,
+    max_level_vc=2,
+    s1_pcg=4,
+    s2_pcg=4,
+    max_level_pcg=2,
+    gauss_scale=0.5,
+):
+    """
+    Run CG, VC, and PCG for several lambda values.
+
+    - CG and PCG are run on the real image pair (frame0_path, frame1_path).
+    - VC is run on a synthetic Gaussian test image of size N_synth.
+
+    Returns:
+        results : dict in the format expected by plot_performance_lambda
+        vis_data: (Im0_real, Im1_real, u_cg, v_cg, u_vc, v_vc, u_pcg, v_pcg)
+                  using the last lambda in `lams` (for plotting flow fields).
+    """
+
+    methods = ["cg", "vc", "pcg"]
+    results = init_lambda_results(methods, lams)
+
+    # --- Real image pair: preprocess once ---
+    Im_0_raw = plt.imread(frame0_path)
+    Im_1_raw = plt.imread(frame1_path)
+    u0_real, v0_real, Ix_real, Iy_real, rhsu_real, rhsv_real, Im0_real, Im1_real = \
+        image_preprocess(Im_0_raw, Im_1_raw, gauss_scale)
+
+    # # --- Synthetic Gaussian test image: preprocess once ---
+    # Im_0_synth, Im_1_synth = generate_test_image(N_synth, testcase=2)
+    # u0_synth, v0_synth, Ix_synth, Iy_synth, rhsu_synth, rhsv_synth, Im0_s, Im1_s = \
+    #     image_preprocess(Im_0_synth, Im_1_synth, gauss_scale)
+
+    # placeholders for last flows (for plotting)
+    u_cg = v_cg = u_vc = v_vc = u_pcg = v_pcg = None
+
+    for k, lam in enumerate(lams):
+        print(f"\n=== λ = {lam} ===")
+
+        # CG
+        start = time.time()
+        u_cg, v_cg, it_cg, rel_cg, res_cg = of_cg(
+            u0_real, v0_real, Ix_real, Iy_real, lam,
+            rhsu_real, rhsv_real,
+            tol=tol, maxit=maxit_cg
+        )
+        t_cg = time.time() - start
+        results["cg"]["iterations"][k] = it_cg
+        results["cg"]["time"][k] = t_cg
+        results["cg"]["residual_history"][k] = res_cg
+        print(f"CG:  it={it_cg:4d}, time={t_cg:.3f}s, final rel={rel_cg:.2e}")
+
+        # Vcycle
+        start = time.time()
+        u_vc, v_vc, it_vc, rel_vc, res_vc = of_vc(
+            u0_real, v0_real, Ix_real, Iy_real, lam,
+            rhsu_real, rhsv_real,
+            s1=s1_vc, s2=s2_vc, max_level=max_level_vc,
+            tol=tol, maxit=maxit_vc
+        )
+        t_vc = time.time() - start
+        results["vc"]["iterations"][k] = it_vc
+        results["vc"]["time"][k] = t_vc
+        results["vc"]["residual_history"][k] = res_vc
+        print(f"VC:  it={it_vc:4d}, time={t_vc:.3f}s, final rel={rel_vc:.2e}")
+
+        # PCG
+        start = time.time()
+        u_pcg, v_pcg, it_pcg, rel_pcg, res_pcg = of_cg(
+            u0_real, v0_real, Ix_real, Iy_real, lam,
+            rhsu_real, rhsv_real,
+            tol=tol, maxit=maxit_cg,
+            preconditioner=V_cycle,
+            s1=s1_pcg, s2=s2_pcg, level=0, max_level=max_level_pcg
+        )
+        t_pcg = time.time() - start
+        results["pcg"]["iterations"][k] = it_pcg
+        results["pcg"]["time"][k] = t_pcg
+        results["pcg"]["residual_history"][k] = res_pcg
+        print(f"PCG: it={it_pcg:4d}, time={t_pcg:.3f}s, final rel={rel_pcg:.2e}")
+
+    vis_data = (Im0_real, Im1_real, u_cg, v_cg, u_vc, v_vc, u_pcg, v_pcg)
+    return results, vis_data
+

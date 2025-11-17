@@ -95,6 +95,13 @@ def of_cg(u0, v0, Ix, Iy, reg, rhsu, rhsv,
 
     return u, v, it, rel, res_hist
 
+def pcg_solver(u0, v0, Ix, Iy, reg, rhsu, rhsv, tol=1e-8, maxit=2000):
+    # PCG = CG with V_cycle preconditioner
+    return of_cg(
+        u0, v0, Ix, Iy, reg, rhsu, rhsv,
+        tol=tol, maxit=maxit,
+        preconditioner=V_cycle, s1=2, s2=2, level=0, max_level=2
+    )
 
 def V_cycle(u0, v0, Ix, Iy, reg, rhsu, rhsv, s1, s2, level, max_level):
     '''

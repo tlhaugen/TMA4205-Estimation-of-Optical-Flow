@@ -78,3 +78,20 @@ def apply_A(u, v, Ix, Iy, reg, level=0):
     Av = IxIy * u + Iy2 * v - reg * (h2inv * Lv)
 
     return zero_boundary(Au), zero_boundary(Av)  #Enforce zero BCs
+
+
+def compute_gradients_full(Im0, Im1):
+    Im0 = Im0.astype(float)
+    Im1 = Im1.astype(float)
+
+    # Spatial derivatives (centered differences)
+    Ix = np.zeros_like(Im0)
+    Iy = np.zeros_like(Im0)
+
+    Ix[:, 1:-1] = 0.5 * (Im0[:, 2:] - Im0[:, :-2])
+    Iy[1:-1, :] = 0.5 * (Im0[2:, :] - Im0[:-2, :])
+
+    # Temporal derivative
+    It = Im1 - Im0
+
+    return Ix, Iy, It
